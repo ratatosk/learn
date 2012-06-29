@@ -1,4 +1,4 @@
 learn
 =====
 
-Machine learning library.
+Statistical machine learning library in haskell.
