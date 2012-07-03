@@ -10,4 +10,28 @@ build-type:          Simple
 cabal-version:       >=1.8
 
 library
-  build-depends:       base ==4.5.*
+  build-depends:
+    base == 4.5.*,
+    repa >= 0.3,
+    repa-devil >= 0.3,
+    accelerate >= 0.12
+  exposed-modules:
+    Learn.NN
+
+executable simpleclassifier
+  build-depends:
+    base == 4.5.*,
+    repa >= 0.3.0,
+    repa-devil >= 0.3.0
+  main-is: test/SimpleClassifier.hs
+  other-modules:
+    Learn.NN
+
+executable chargenerator
+  build-depends:
+    base == 4.5.*
+  main-is: gen/CharGenerator.hs
+
+
+  
+  
