@@ -106,13 +106,13 @@ distGroups = [ genpolys lines1
              ]
               
 chars :: [Char]
-chars = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+chars = ['0'] --, '1', '2', '3', '4', '5', '6', '7', '8', '9']
 
 fontsizes :: [Int]
-fontsizes = [50, 70]
+fontsizes = [80, 70]
 
 fonts :: [String]
-fonts = ["Helvetica", "Arial-Normal", "Consolas-Bold", "Verdana-Normal"]
+fonts = ["Arial-Normal", "Helvetica", "Verdana-Normal"]
 
 -- of all kinds of distortions pick two kinds, pick one from each kind and combine
 
