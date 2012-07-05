@@ -22,6 +22,7 @@ type NN = [Layer]
 -- i - input
 -- w - weight matrix
 -- b - bias weights vector
+-- y - labels (ground truth)
 
 randInit :: Int -> NNShape -> NN
 randInit _ [] = []
@@ -53,16 +54,28 @@ weightedSumsP i (w, b)
                                          $ R.zipWith (*)
                                          (slice i (Any :. (row ix) :. All))
                                          (slice w (Any :. (col ix) :. All)))
+                    
+{-# INLINE outError #-}
+outError :: Double -> Double -> Double
+outError z a y = (- (y - a) * sigmoid'(z)) 
                                  
--- returns weighted sums and activations
-activationsP :: Monad m => UMat -> NN -> m [(UMat, UMat)]
-activationsP _ [] = return []
-activationsP i (l:ls) = do
-  z <- weightedSumsP i l
-  a <- computeP $ R.map sigmoid z
-  nxt <- activationsP a ls
-  return $ (a, z) : nxt
+-- returns lists of weighted sums and activations
+forwardP :: Monad m => UMat -> NN -> m ([UMat], [UMat])
+forwardP i l = liftM unzip $ forwardP' i l
+  where
+    forwardP' i [] = return []
+    forwardP' i (l:ls) = do
+      z <- weightedSumsP i l
+      a <- computeP $ R.map sigmoid z
+      nxt <- activationsP a ls
+      return $ (z, a) : nxt
+         
+errorsP :: Monad m => UMat -> NN -> [UMat] -> [UMat] -> m [(UMat)]
+errorsP y n z a = errors1 y (reverse n) (tail $ reverse z) (last a)
+  where
+    errors1 y n z a = do
+      eOut <- calculateP $ R.zipWith (-) y 
+      eHid <- 
+      return (eOut : eHid)
   
   
-
-
