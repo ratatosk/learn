@@ -17,5 +17,5 @@ for FROM in $SRC/*; do
     FILENAME=`basename "$FROM" | sed 's/\.[^\.]*$//'`
     TO="$DST/$FILENAME.tiff"
     echo "converting $FROM to $TO..."
-    convert "$FROM" -resize 64x64\! -colorspace Gray "$TO"
+    convert "$FROM" -resize 32x32\! -colorspace Gray "$TO"
 done

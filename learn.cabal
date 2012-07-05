@@ -14,7 +14,20 @@ library
     base == 4.5.*,
     repa >= 0.3,
     repa-devil >= 0.3,
-    accelerate >= 0.12
+    repa-algorithms >= 0.3
+    
+  ghc-options:
+   -Wall -fno-warn-missing-signatures
+   -Odph
+   -fno-liberate-case
+   -fsimplifier-phases=4
+   -funfolding-use-threshold=1000
+   -funfolding-keeness-factor=1000
+   -funbox-strict-fields
+   -fcpr-off
+   -fllvm
+   -optlo-O3
+
   exposed-modules:
     Learn.NN
 
