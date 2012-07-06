@@ -40,6 +40,7 @@ sigmoid x = 1 / (1 + exp (-x))
 sigmoid' :: Double -> Double
 sigmoid' x = sx * (1 - sx) where sx = sigmoid x
                                  
+-- TODO: try to remove NOINLINE annotations
 -- calculate weighted sums in parallel
 -- TODO: switch to unsafeSlice after testing
 {-# NOINLINE weightedSumsP #-}
@@ -50,11 +51,19 @@ weightedSumsP i (w, b)
        let (Z :. w2  :. _) = extent w
        computeP 
          $ fromFunction (Z :. h1 :. w2)
-           $ \ix -> b ! (Z :. col ix) + (R.sumAllS 
-                                         $ R.zipWith (*)
-                                         (slice i (Any :. (row ix) :. All))
-                                         (slice w (Any :. (col ix) :. All)))
-                    
+         $ \ix -> b ! (Z :. col ix) + (R.sumAllS 
+                                       $ R.zipWith (*)
+                                       (slice i (Any :. (row ix) :. All))
+                                       (slice w (Any :. (col ix) :. All)))
+                  
+-- TODO: Fuse it manually into mmultP to avoid allocation
+-- A .* sigmoid'(B) (.* - elementWise multiplication)
+{-# NOINLINE weightedSumsP #-}       
+dotProdSigmP :: Monad m => UMat -> UMat -> UMat
+dotProdSigmP a b = [a, b] `deepSeqArray` computeP
+                  $ fromFunction (extent a)
+                  $ \ix -> a ! ix * sigmoid' (b ! ix)
+                  
 {-# INLINE outError #-}
 outError :: Double -> Double -> Double
 outError z a y = (- (y - a) * sigmoid'(z)) 
@@ -73,9 +82,12 @@ forwardP i l = liftM unzip $ forwardP' i l
 errorsP :: Monad m => UMat -> NN -> [UMat] -> [UMat] -> m [(UMat)]
 errorsP y n z a = errors1 y (reverse n) (tail $ reverse z) (last a)
   where
-    errors1 y n z a = do
-      eOut <- calculateP $ R.zipWith (-) y 
-      eHid <- 
+    errors1 y' n' z' a' = do
+      eOut <- computeP $ R.zipWith (-) y' 
+      eHid <- errorsHid eOut n' z'
       return (eOut : eHid)
-  
-  
+    
+    errorsHid _ [] _ = []
+    errorsHid nxt ((w:_):ls) z = 
+do cur
+    
