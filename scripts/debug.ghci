@@ -1,5 +1,6 @@
 let input = randInput 1 5 2
 let nnshape = [2, 2, 2]::[Int]
 let nninit = randInit 1 nnshape
-zsas <- forwardP input nninit
-let y = yFromList [0, 1, 0, 1, 1]
+(zs, as) <- forwardP input nninit
+let y = yFromList [0, 1, 1, 0, 0, 1, 1, 0, 0, 1] 2
+ers <- errorsP y nninit (fst zsas) (snd zsas)

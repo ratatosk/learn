@@ -37,7 +37,7 @@ randInit seed (f:s:ls) = (w, b) : randInit (seed + 2) (s:ls)
 randInput :: Int -> Int -> Int -> UMat
 randInput seed h w = randomishDoubleArray (Z :. h :. w) 0.0 1.0 seed
 
-yFromList :: [Double] -> Int -> UVec
+yFromList :: [Double] -> Int -> UMat
 yFromList ys nc = fromListUnboxed (Z :. (length ys `div` nc) :. nc) ys
 
 {-# INLINE sigmoid #-}
@@ -59,10 +59,10 @@ weightedSumsP i (w, b)
        let (Z :. w2  :. _) = extent w
        computeP 
          $ fromFunction (Z :. h1 :. w2)
-         $ \ix -> b ! (Z :. col ix) + (R.sumAllS 
-                                       $ R.zipWith (*)
-                                       (slice i (Any :. (row ix) :. All))
-                                       (slice w (Any :. (col ix) :. All)))
+         $ \ix -> b ! (Z :. col ix) + R.sumAllS 
+                                       (R.zipWith (*)
+                                       (slice i (Any :. row ix :. All))
+                                       (slice w (Any :. col ix :. All)))
                   
 -- TODO: Fuse it manually into mmultP to avoid allocation
 -- A .* sigmoid'(B) (.* - elementWise multiplication)
@@ -74,7 +74,7 @@ dotProdSigmP a b = [a, b] `deepSeqArrays` computeP
                   
 {-# INLINE outError #-}
 outError :: Double -> Double -> Double -> Double
-outError z a y = (- (y - a) * sigmoid'(z)) 
+outError z a y = - (y - a) * sigmoid' z
                                  
 -- returns lists of weighted sums and activations
 forwardP :: Monad m => UMat -> NN -> m ([UMat], [UMat])
@@ -87,11 +87,12 @@ forwardP i l = liftM unzip $ forwardP' i l
       nxt <- forwardP' a ls
       return $ (z, a) : nxt
          
-errorsP :: Monad m => UMat -> NN -> [UMat] -> [UMat] -> m [(UMat)]
-errorsP y n z a = errors1 y (reverse n) (tail $ reverse z) (last a)
+errorsP :: Monad m => UMat -> NN -> [UMat] -> [UMat] -> m [UMat]
+errorsP y n z a = errors1 y (reverse $ tail n) (tail $ reverse z) (last a)
   where
     errors1 y' n' z' a' = do
       eOut <- computeP $ R.zipWith (-) y' a'
+      print $ extent eOut
       eHid <- errorsHid eOut n' z'
       return (eOut : eHid)
     
