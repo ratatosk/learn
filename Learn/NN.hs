@@ -1,5 +1,7 @@
 module Learn.NN where
 
+import Control.Monad (liftM)
+
 import Data.Array.Repa                  as R
 --import Data.Array.Repa.Unsafe           as R
 
@@ -31,6 +33,12 @@ randInit seed (f:s:ls) = (w, b) : randInit (seed + 2) (s:ls)
   where 
     w = randomishDoubleArray (Z :. s :. f) 0.0 0.1 seed
     b = randomishDoubleArray (Z :. s) 0.0 0.1 (seed + 1)
+    
+randInput :: Int -> Int -> Int -> UMat
+randInput seed h w = randomishDoubleArray (Z :. h :. w) 0.0 1.0 seed
+
+yFromList :: [Double] -> Int -> UVec
+yFromList ys nc = fromListUnboxed (Z :. (length ys `div` nc) :. nc) ys
 
 {-# INLINE sigmoid #-}
 sigmoid :: Double -> Double
@@ -58,14 +66,14 @@ weightedSumsP i (w, b)
                   
 -- TODO: Fuse it manually into mmultP to avoid allocation
 -- A .* sigmoid'(B) (.* - elementWise multiplication)
-{-# NOINLINE weightedSumsP #-}       
-dotProdSigmP :: Monad m => UMat -> UMat -> UMat
-dotProdSigmP a b = [a, b] `deepSeqArray` computeP
+{-# NOINLINE dotProdSigmP #-}       
+dotProdSigmP :: Monad m => UMat -> UMat -> m UMat
+dotProdSigmP a b = [a, b] `deepSeqArrays` computeP
                   $ fromFunction (extent a)
                   $ \ix -> a ! ix * sigmoid' (b ! ix)
                   
 {-# INLINE outError #-}
-outError :: Double -> Double -> Double
+outError :: Double -> Double -> Double -> Double
 outError z a y = (- (y - a) * sigmoid'(z)) 
                                  
 -- returns lists of weighted sums and activations
@@ -76,18 +84,30 @@ forwardP i l = liftM unzip $ forwardP' i l
     forwardP' i (l:ls) = do
       z <- weightedSumsP i l
       a <- computeP $ R.map sigmoid z
-      nxt <- activationsP a ls
+      nxt <- forwardP' a ls
       return $ (z, a) : nxt
          
 errorsP :: Monad m => UMat -> NN -> [UMat] -> [UMat] -> m [(UMat)]
 errorsP y n z a = errors1 y (reverse n) (tail $ reverse z) (last a)
   where
     errors1 y' n' z' a' = do
-      eOut <- computeP $ R.zipWith (-) y' 
+      eOut <- computeP $ R.zipWith (-) y' a'
       eHid <- errorsHid eOut n' z'
       return (eOut : eHid)
     
-    errorsHid _ [] _ = []
-    errorsHid nxt ((w:_):ls) z = 
-do cur
-    
+    errorsHid _ [] _ = return []
+    errorsHid nxt ((w,_):ls) (z:zs) = do 
+      tmp <- mmultP nxt w
+      cur <- dotProdSigmP tmp z
+      prevs <- errorsHid cur ls zs
+      return (cur : prevs)
+      
+gradientP :: Monad m => [UMat] -> [UMat] -> m NN
+gradientP [] _ = return []
+gradientP (e:es) (a:as) = do
+  et <- transpose2P e
+  fw <- mmultP et a
+  fb <- sumP et
+  nxt <- gradientP es as
+  return ((fw, fb) : nxt)
+  
