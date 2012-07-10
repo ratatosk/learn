@@ -1,5 +1,6 @@
 module Learn.NN where
 
+import Control.Applicative
 import Control.Monad (liftM)
 
 import Data.Array.Repa                  as R
@@ -25,6 +26,8 @@ type NN = [Layer]
 -- w - weight matrix
 -- b - bias weights vector
 -- y - labels (ground truth)
+
+-- global TODO: make use of R.traverse*
 
 randInit :: Int -> NNShape -> NN
 randInit _ [] = []
@@ -65,6 +68,7 @@ weightedSumsP i (w, b)
                                        (slice w (Any :. col ix :. All)))
                   
 -- TODO: Fuse it manually into mmultP to avoid allocation
+-- TODO: use R.*^
 -- A .* sigmoid'(B) (.* - elementWise multiplication)
 {-# NOINLINE dotProdSigmP #-}       
 dotProdSigmP :: Monad m => UMat -> UMat -> m UMat
@@ -77,11 +81,11 @@ outError :: Double -> Double -> Double -> Double
 outError z a y = - (y - a) * sigmoid' z
                                  
 -- returns lists of weighted sums and activations
-forwardP :: Monad m => UMat -> NN -> m ([UMat], [UMat])
-forwardP i l = liftM unzip $ forwardP' i l
+forwardP :: Monad m => NN -> UMat -> m ([UMat], [UMat])
+forwardP l i = liftM unzip $ forwardP' i l
   where
-    forwardP' i [] = return []
-    forwardP' i (l:ls) = do
+    forwardP' [] _ = return []
+    forwardP' (l:ls) i = do
       z <- weightedSumsP i l
       a <- computeP $ R.map sigmoid z
       nxt <- forwardP' a ls
@@ -92,7 +96,6 @@ errorsP y n z a = errors1 y (reverse $ tail n) (tail $ reverse z) (last a)
   where
     errors1 y' n' z' a' = do
       eOut <- computeP $ R.zipWith (-) y' a'
-      print $ extent eOut
       eHid <- errorsHid eOut n' z'
       return (eOut : eHid)
     
@@ -105,10 +108,36 @@ errorsP y n z a = errors1 y (reverse $ tail n) (tail $ reverse z) (last a)
       
 gradientP :: Monad m => [UMat] -> [UMat] -> m NN
 gradientP [] _ = return []
-gradientP (e:es) (a:as) = do
-  et <- transpose2P e
+gradientP (e:es) (a:as) = let m = (row $ extent e) in do
+  enorm <- computeP $ R.map (/ fromIntegral m) e
+  et <- transpose2P enorm
   fw <- mmultP et a
   fb <- sumP et
   nxt <- gradientP es as
   return ((fw, fb) : nxt)
   
+costP :: Monad m => NN -> UMat -> UMat -> m Double
+costP n i y = do
+  let m = row $ extent y
+  (_, a) <- forwardP n i
+  (/ fromIntegral m) <$> sumAllP $ R.map (\x -> x*x) $ R.zipWith (-) y a
+
+-- apply delta to matrix element
+patchP :: Shape sh, Monad m => UMat -> sh -> Double -> m UMat
+patchP m s1 d = computeP $ traverse m id (\f s2 -> if s1 == s2 then f s2 else f s2 + d)
+
+patchWP Monad m => NN -> Int -> Int -> Int -> Double -> m NN
+patchWP ((w, b):ls) 0 r c d = do
+  w' <- patchP w (Z :. r :. c) d
+  return ((w', b):ls)
+patchWP (l:ls) n r c d = do
+  ls' <- patchWP ls (n-1) r c d
+  return (l:ls')
+  
+
+--                         nnet  input labels   layer   row  column   epsilon
+numGradientWP :: Monad m => NN -> UMat -> UMat -> Int -> Int -> Int -> Double -> m Double  
+numGradientWP i y ln r c eps = do
+  
+numGradientWP :: Monad m => NN -> UMat -> UMat -> Int -> Int -> Int -> Double -> m Double  
+numGradientWP i y ln r c eps = do

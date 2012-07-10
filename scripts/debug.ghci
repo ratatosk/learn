@@ -3,4 +3,5 @@ let nnshape = [2, 2, 2]::[Int]
 let nninit = randInit 1 nnshape
 (zs, as) <- forwardP input nninit
 let y = yFromList [0, 1, 1, 0, 0, 1, 1, 0, 0, 1] 2
-ers <- errorsP y nninit (fst zsas) (snd zsas)
+ers <- errorsP y nninit zs as
+gr <- gradientP ers as
