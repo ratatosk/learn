@@ -124,25 +124,3 @@ costP n i y = do
   (_, a) <- forwardP n i
   (/ fromIntegral m) <$> sumAllP $ R.map (\x -> x*x) $ R.zipWith (-) y a
 
--- apply delta to matrix element
-patchP :: Shape sh, Monad m => UMat -> sh -> Double -> m UMat
-patchP m s1 d = computeP $ traverse m id (\f s2 -> if s1 == s2 then f s2 else f s2 + d)
-
-pfst :: (a, b) -> (a -> a) -> (a, b)
-pfst (x, y) f = (f x, y)
-
-psnd :: (a, b) -> (b -> b) -> (a, b)
-psnd (x, y) f = (x, f y)
-
-patchWP Monad m => NN -> Int -> Int -> Int -> Double -> m NN
-patchWP n ln r c d = mapM (\(i, l@(w, b)) -> if i == ln then (,b) <$> patchP w (Z :. r :. c) d else l) $ zip [0..] n
-
-patchBP Monad m => NN -> Int -> Int -> Int -> Double -> m NN
-patchBP n ln r d = mapM (\(i, l@(w, b)) -> if i == ln then (w,) <$> patchP b (Z :. r) d else l) $ zip [0..] n
-
---                         nnet  input labels   layer   row  column   epsilon
-numGradientWP :: Monad m => NN -> UMat -> UMat -> Int -> Int -> Int -> Double -> m Double  
-numGradientWP i y ln r c eps = do
-  
-numGradientWP :: Monad m => NN -> UMat -> UMat -> Int -> Int -> Int -> Double -> m Double  
-numGradientWP i y ln r c eps = do
