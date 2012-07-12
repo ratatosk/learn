@@ -2,7 +2,6 @@
 
 module Learn.NN where
 
-import Control.Applicative
 import Control.Monad (liftM)
 
 import Data.Array.Repa                  as R
@@ -84,13 +83,13 @@ outError z a y = - (y - a) * sigmoid' z
                                  
 -- returns lists of weighted sums and activations
 forwardP :: Monad m => NN -> UMat -> m ([UMat], [UMat])
-forwardP l i = liftM unzip $ forwardP' i l
+forwardP l i = liftM unzip $ forwardP' l i
   where
     forwardP' [] _ = return []
     forwardP' (l:ls) i = do
       z <- weightedSumsP i l
       a <- computeP $ R.map sigmoid z
-      nxt <- forwardP' a ls
+      nxt <- forwardP' ls a
       return $ (z, a) : nxt
          
 errorsP :: Monad m => UMat -> NN -> [UMat] -> [UMat] -> m [UMat]
@@ -122,5 +121,6 @@ costP :: Monad m => NN -> UMat -> UMat -> m Double
 costP n i y = do
   let m = row $ extent y
   (_, a) <- forwardP n i
-  (/ fromIntegral m) <$> sumAllP $ R.map (\x -> x*x) $ R.zipWith (-) y a
+  s <- sumAllP $ R.map (\x -> x*x) $ R.zipWith (-) y (last a)
+  return $ s / fromIntegral m
 
