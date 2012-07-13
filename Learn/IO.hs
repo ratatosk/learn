@@ -17,15 +17,6 @@ import System.IO
 
 import Data.Array.Repa                          as R
 import Data.Array.Repa.Repr.Unboxed             as R
-{-
-prependToAllM_ :: (Monad m) => m () -> [m ()] -> m ()
-prependToAllM_ _ [] = return ()
-prependToAllM_ d (a:as) = d >> a >> prependToAllM_ d as
-
-intersperseM_ :: (Monad m) => m () -> [m ()] -> m ()
-intersperseM_ _ [] = return ()
-intersperseM_ d (a:as) = a >> prependToAllM_ d as
--} 
 
 writeRow :: (Show e, Source r e) => Handle -> Array r DIM1 e -> IO ()
 writeRow h r = hPutStrLn h $ intercalate ", " $ P.map show $ toList r
@@ -47,6 +38,7 @@ commaSep s = case break (== ',') s of
   
 --readRow :: (Num e, Read e, Unbox 
 
+-- ^ read matrix
 readMat :: (Num e, Read e, Unbox e) => FilePath -> IO (Array U DIM2 e)
 readMat fn = do
   h <- openFile fn ReadMode
@@ -57,6 +49,14 @@ readMat fn = do
       vals = P.map read $ concat sls
   return $ fromListUnboxed (Z :. cols :. rows) vals
   
-{-
-readVec :: (Num e, Read e, Unbox e) => FilePath -> IO Array U DIM1 Double
--}
+-- ^ read matrix of known size, more efficient than previous
+readSizeMat :: (Num e, Read e, Unbox e) => FilePath -> Int -> Int -> IO (Array U DIM2 e)
+readSizeMat fn rows cols= do
+  h <- openFile fn ReadMode
+  ls <- P.map read <$> concat <$> P.map commaSep <$> filter (not.null) <$> lines <$> hGetContents h
+  return $ fromListUnboxed (Z :. cols :. rows) vals
+
+
+
+readVec :: (Num e, Read e, Unbox e) => FilePath -> IO Array U DIM1 e
+readVec fn = 
