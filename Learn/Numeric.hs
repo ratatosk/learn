@@ -9,7 +9,7 @@ import Learn.NN
 
 -- ^ apply delta to matrix element
 patchP :: (Shape sh, Monad m) => sh -> Double -> R.Array U sh Double-> m (R.Array U sh Double)
-patchP s1 d m = computeP $ traverse m id (\f s2 -> if s1 == s2 then f s2 else f s2 + d)
+patchP s1 d m = computeP $ traverse m id (\f s2 -> if s1 == s2 then f s2 + d else f s2)
 
 -- ^ map monadic function to the first tuple element
 pfst :: Monad m => (a -> m a) -> (a, b) -> m (a, b)
@@ -36,14 +36,14 @@ numGradientNN :: Monad m => UMat -> UMat -> (Double -> m NN) -> Double -> m Doub
 numGradientNN i y f eps = do
   ns <- mapM f [-eps, eps]
   [c1, c2] <- mapM (\n -> costP n i y) ns
-  return $ (c2 - c2) / (2 * eps)
+  return $ (c2 - c1) / (2 * eps)
 
 -- ^ get numeric gradient estimation for weight coefficient given layer, row and column numbers
 --                         nnet  input   labels  layer   row  column   epsilon
 numGradientWP :: Monad m => NN -> UMat -> UMat -> Int -> Int -> Int -> Double -> m Double  
-numGradientWP n i y ln r c eps = numGradientNN i y (patchWP n ln r c) eps
+numGradientWP n i y ln r c = numGradientNN i y (patchWP n ln r c)
   
 -- ^ get numeric gradient estimation for bias coefficient given layer and row numbers
 --                         nnet  input   labels  layer   row    epsilon
 numGradientBP :: Monad m => NN -> UMat -> UMat -> Int -> Int -> Double -> m Double  
-numGradientBP n i y ln r eps = numGradientNN i y (patchBP n ln r) eps
+numGradientBP n i y ln r = numGradientNN i y (patchBP n ln r)

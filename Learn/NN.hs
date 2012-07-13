@@ -1,5 +1,3 @@
-{-# LANGUAGE TupleSections #-}
-
 module Learn.NN where
 
 import Control.Monad (liftM)
