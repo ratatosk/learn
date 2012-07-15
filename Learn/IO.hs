@@ -9,7 +9,8 @@ module Learn.IO where
 
 import Prelude as P
 
-import Control.Applicative
+import Control.Applicative ((<$>))
+import Control.Monad ((>=>))
 
 import Data.List
 
@@ -35,28 +36,14 @@ commaSep :: String -> [String]
 commaSep s = case break (== ',') s of 
   ([], _) -> []
   (x, xs) -> (x : commaSep (dropWhile (==',') xs))
-  
---readRow :: (Num e, Read e, Unbox 
 
--- ^ read matrix
-readMat :: (Num e, Read e, Unbox e) => FilePath -> IO (Array U DIM2 e)
-readMat fn = do
-  h <- openFile fn ReadMode
-  ls <- lines <$> hGetContents h
-  let rows = length ls
-      sls = P.map commaSep ls
-      cols = length $ head ls
-      vals = P.map read $ concat sls
-  return $ fromListUnboxed (Z :. cols :. rows) vals
-  
--- ^ read matrix of known size, more efficient than previous
-readSizeMat :: (Num e, Read e, Unbox e) => FilePath -> Int -> Int -> IO (Array U DIM2 e)
-readSizeMat fn rows cols= do
-  h <- openFile fn ReadMode
-  ls <- P.map read <$> concat <$> P.map commaSep <$> filter (not.null) <$> lines <$> hGetContents h
-  return $ fromListUnboxed (Z :. cols :. rows) vals
+readVals :: (Num e, Read e) => FilePath -> IO [e]
+readVals fn = withFile fn ReadMode $ hGetContents >=> return . P.map read . concat . P.map commaSep . filter (not.null) . lines
 
+-- ^ read matrix of known size
+readMat :: (Num e, Read e, Unbox e) => FilePath -> Int -> Int -> IO (Array U DIM2 e)
+readMat fn rows cols = fromListUnboxed (Z :. rows :. cols) <$> readVals fn
 
-
-readVec :: (Num e, Read e, Unbox e) => FilePath -> IO Array U DIM1 e
-readVec fn = 
+-- ^ read vector of known size
+readVec :: (Num e, Read e, Unbox e) => FilePath -> Int -> IO (Array U DIM1 e)
+readVec fn rows = fromListUnboxed (Z :. rows ) <$> readVals fn

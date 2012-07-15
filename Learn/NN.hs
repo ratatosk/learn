@@ -81,7 +81,7 @@ outError z a y = - (y - a) * sigmoid' z
                                  
 -- returns lists of weighted sums and activations
 forwardP :: Monad m => NN -> UMat -> m ([UMat], [UMat])
-forwardP l i = liftM unzip $ forwardP' l i
+forwardP nn inp = liftM unzip $ forwardP' nn inp
   where
     forwardP' [] _ = return []
     forwardP' (l:ls) i = do

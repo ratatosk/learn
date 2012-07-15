@@ -29,7 +29,7 @@ library
    -optlo-O3
 
   exposed-modules:
-    Learn.NN
+    Learn.NN Learn.Numeric Learn.IO
 
 executable simpleclassifier
   build-depends:
