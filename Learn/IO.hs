@@ -10,7 +10,6 @@ module Learn.IO where
 import Prelude as P
 
 import Control.Applicative ((<$>))
-import Control.Monad ((>=>))
 
 import Data.List
 
@@ -38,7 +37,7 @@ commaSep s = case break (== ',') s of
   (x, xs) -> (x : commaSep (dropWhile (==',') xs))
 
 readVals :: (Num e, Read e) => FilePath -> IO [e]
-readVals fn = withFile fn ReadMode $ hGetContents >=> return . P.map read . concat . P.map commaSep . filter (not.null) . lines
+readVals fn = P.map read . concat . P.map commaSep . filter (not.null) . lines <$> readFile fn
 
 -- ^ read matrix of known size
 readMat :: (Num e, Read e, Unbox e) => FilePath -> Int -> Int -> IO (Array U DIM2 e)
