@@ -115,10 +115,18 @@ gradientP (e:es) (a:as) = let m = (row $ extent e) in do
   nxt <- gradientP es as
   return ((fw, fb) : nxt)
   
-costP :: Monad m => NN -> UMat -> UMat -> m Double
-costP n i y = do
+{-# INLINE sqDistPenalty #-}
+sqDistPenalty :: Double -> Double -> Double
+sqDistPenalty a y = let d = a - y in d * d
+
+{-# INLINE logPenalty #-}
+logPenalty :: Double -> Double -> Double
+logPenalty a y = y * log a + (1 - y) * log (1 - a)
+
+costP :: Monad m => (Double -> Double -> Double) -> NN -> UMat -> UMat -> m Double
+costP p n i y = do
   let m = row $ extent y
   (_, a) <- forwardP n i
-  s <- sumAllP $ R.map (\x -> x*x) $ R.zipWith (-) y (last a)
+  s <- sumAllP $ R.zipWith p (last a) y
   return $ s / fromIntegral m
 

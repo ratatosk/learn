@@ -1,3 +1,4 @@
+--------------------------------------------------
 let input = randInput 1 5 2
 let nnshape = [2, 2, 2]::[Int]
 let nninit = randInit 1 nnshape
@@ -5,3 +6,12 @@ let nninit = randInit 1 nnshape
 let y = yFromList [0, 1, 1, 0, 0, 1, 1, 0, 0, 1] 2
 ers <- errorsP y nninit zs as
 gr <- gradientP ers as
+--------------------------------------------------
+w1 <- Learn.IO.readMat "/home/druid/octave/ex4/W1.txt" 2 2
+w2 <- Learn.IO.readMat "/home/druid/octave/ex4/W2.txt" 2 2
+b1 <- Learn.IO.readVec "/home/druid/octave/ex4/B1.txt" 2
+b2 <- Learn.IO.readVec "/home/druid/octave/ex4/B2.txt" 2
+x <- Learn.IO.readMat "/home/druid/octave/ex4/X.txt" 3 2
+y <- Learn.IO.readMat "/home/druid/octave/ex4/Y.txt" 3 2
+let nn = [(w1, b2), (w2, b2)]
+(z, a) <- forwardP nn x
