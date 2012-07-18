@@ -7,11 +7,26 @@ let y = yFromList [0, 1, 1, 0, 0, 1, 1, 0, 0, 1] 2
 ers <- errorsP y nninit zs as
 gr <- gradientP ers as
 --------------------------------------------------
-w1 <- Learn.IO.readMat "/home/druid/octave/ex4/W1.txt" 2 2
-w2 <- Learn.IO.readMat "/home/druid/octave/ex4/W2.txt" 2 2
-b1 <- Learn.IO.readVec "/home/druid/octave/ex4/B1.txt" 2
-b2 <- Learn.IO.readVec "/home/druid/octave/ex4/B2.txt" 2
-x <- Learn.IO.readMat "/home/druid/octave/ex4/X.txt" 3 2
-y <- Learn.IO.readMat "/home/druid/octave/ex4/Y.txt" 3 2
-let nn = [(w1, b2), (w2, b2)]
+:l Learn.NN Learn.IO
+:m + Learn.IO
+w1 <- readMat "/home/druid/octave/ex4/W1.txt" 2 2
+w2 <- readMat "/home/druid/octave/ex4/W2.txt" 2 2
+b1 <- readVec "/home/druid/octave/ex4/B1.txt" 2
+b2 <- readVec "/home/druid/octave/ex4/B2.txt" 2
+x <- readMat "/home/druid/octave/ex4/X.txt" 3 2
+y <- readMat "/home/druid/octave/ex4/Y.txt" 3 2
+let nn = [(w1, b1), (w2, b2)]
 (z, a) <- forwardP nn x
+e <- errorsP y nn z a
+--------------------------------------------------
+% in Octave:
+cd 
+cd octave/ex4
+w1 = load("W1.txt");
+w2 = load("W2.txt");
+b2 = load("B2.txt");
+b1 = load("B1.txt");
+X = load("X.txt");
+y = [1; 2; 1];
+T1 = [b1 w1];
+T2 = [b2 w2];

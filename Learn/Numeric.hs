@@ -31,11 +31,12 @@ patchWP n ln r c d = patchNN n ln $ pfst $ patchP (Z :. r :. c) d
 patchBP :: Monad m => NN -> Int -> Int -> Double -> m NN
 patchBP n ln r d = patchNN n ln $ psnd $ patchP (Z :. r) d
 
+-- TODO: make sure that gradient is not calculated (not sure about laziness)
 -- ^ get numeric gradient estimation given NN producer
 numGradientNN :: Monad m => UMat -> UMat -> (Double -> m NN) -> Double -> m Double  
 numGradientNN i y f eps = do
   ns <- mapM f [-eps, eps]
-  [c1, c2] <- mapM (\n -> costP n i y) ns
+  [c1, c2] <- mapM (\n -> liftM fst $ costNGradient n i y) ns
   return $ (c2 - c1) / (2 * eps)
 
 -- ^ get numeric gradient estimation for weight coefficient given layer, row and column numbers
