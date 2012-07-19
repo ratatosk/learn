@@ -29,7 +29,11 @@ library
    -optlo-O3
 
   exposed-modules:
-    Learn.NN Learn.Numeric Learn.IO
+    Learn.NN
+    Learn.Numeric
+    Learn.IO
+    Learn.Util
+    Learn.GradientDescent
 
 executable simpleclassifier
   build-depends:
@@ -38,7 +42,7 @@ executable simpleclassifier
     repa-devil >= 0.3.0
   main-is: test/SimpleClassifier.hs
   other-modules:
-    Learn.NN
+    Learn.NN Learn.IO
 
 executable chargenerator
   build-depends:

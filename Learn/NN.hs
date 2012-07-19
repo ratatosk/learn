@@ -1,3 +1,5 @@
+{-# LANGUAGE ExistentialQuantification, Rank2Types #-}
+
 module Learn.NN where
 
 import Control.Monad (liftM)
@@ -137,3 +139,11 @@ costNGradient nn x y = do
   e <- errorsP y nn z a
   grad <- gradientP e (x:a)
   return (cost, grad)
+
+-- omg...
+mapPair :: (Shape sh1, Shape sh2) => (forall sh' . Shape sh' => Array U sh' Double -> Array U sh' Double -> Array U sh' Double) -> (Array U sh1 Double, Array U sh2 Double) -> (Array U sh1 Double, Array U sh2 Double) -> (Array U sh1 Double, Array U sh2 Double)
+mapPair f (x1, y1) (x2, y2) = (f x1 x2, f y1 y2)
+
+-- ^ sum network weight and bias units with gradients
+nnSumS :: NN -> NN -> Double -> NN
+nnSumS nn grad alpha = Prelude.zipWith (mapPair $ (\m1 m2 -> computeS $ R.zipWith (\a b -> a - alpha * b) m1 m2)) nn grad
