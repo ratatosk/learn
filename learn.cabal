@@ -27,6 +27,7 @@ library
    -fcpr-off
    -fllvm
    -optlo-O3
+   -threaded
 
   exposed-modules:
     Learn.NN
@@ -36,10 +37,24 @@ library
     Learn.GradientDescent
 
 executable simpleclassifier
+  ghc-options:
+   -Wall -fno-warn-missing-signatures
+   -Odph
+   -fno-liberate-case
+   -fsimplifier-phases=4
+   -funfolding-use-threshold=1000
+   -funfolding-keeness-factor=1000
+   -funbox-strict-fields
+   -fcpr-off
+   -fllvm
+   -optlo-O3
+   -threaded
+
   build-depends:
     base == 4.5.*,
     repa >= 0.3.0,
-    repa-devil >= 0.3.0
+    repa-devil >= 0.3.0,
+    repa-algorithms >= 0.3
   main-is: test/SimpleClassifier.hs
   other-modules:
     Learn.NN Learn.IO
