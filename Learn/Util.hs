@@ -11,3 +11,19 @@ classesToPredictions c nClasses = computeP
   where
     (Z :. m) = extent c
     sh = (Z :. m :. nClasses)
+         
+maxIdx :: (Source r Double) => Array r DIM1 Double -> Int
+maxIdx a = maxIdx' 0 0
+  where
+    (Z :. n) = extent a
+    maxIdx' cur ptr | ptr == n = cur
+                    | otherwise = if a ! (Z :. ptr) > a ! (Z :. cur)
+                                  then maxIdx' ptr (ptr + 1)
+                                  else maxIdx' cur (ptr + 1)
+           
+predictionsToClasses :: (Monad m, Source r Double) => Array r DIM2 Double -> m (Array U DIM1 Int)
+predictionsToClasses c = computeP 
+                         $ fromFunction (Z :. r) 
+                         $ \(Z :. i) -> maxIdx $ slice c (Any :. i :. All)
+  where
+    (Z :. r :. _) = extent c
