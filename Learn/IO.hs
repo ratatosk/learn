@@ -29,7 +29,7 @@ writeMat fn m = let (Z :. rn :. _) = extent m
                   mapM_ (writeRow h) rows
   
 writeVec :: (Show e, Source r e) => FilePath -> Array r DIM1 e -> IO ()
-writeVec fn v = writeMat fn $ extend (Any :. (1::Int) :. All) v 
+writeVec fn v = writeMat fn $ extend (Any :. (1 :: Int) :. All) v 
     
 commaSep :: String -> [String]
 commaSep s = case break (== ',') s of 

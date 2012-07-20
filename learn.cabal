@@ -13,7 +13,6 @@ library
   build-depends:
     base == 4.5.*,
     repa >= 0.3,
-    repa-devil >= 0.3,
     repa-algorithms >= 0.3
     
   ghc-options:
@@ -53,11 +52,20 @@ executable simpleclassifier
   build-depends:
     base == 4.5.*,
     repa >= 0.3.0,
-    repa-devil >= 0.3.0,
     repa-algorithms >= 0.3
   main-is: test/SimpleClassifier.hs
   other-modules:
     Learn.NN Learn.IO
+
+executable matconvert
+  build-depends:
+    base == 4.5.*,
+    repa >= 0.3.0,
+    filepath >= 1.3.0.0
+  main-is: util/Convert.hs
+  other-modules:
+    Learn.IO
+  
 
 executable chargenerator
   build-depends:
