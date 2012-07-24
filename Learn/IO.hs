@@ -36,6 +36,9 @@ commaSep s = case break (== ',') s of
   ([], _) -> []
   (x, xs) -> (x : commaSep (dropWhile (==',') xs))
 
+
+-- TODO: use bytestrings and attoparsec to reduce memory usage (which is enormous)
+  
 readVals :: (Num e, Read e) => FilePath -> IO [e]
 readVals fn = P.map read . concat . P.map commaSep . filter (not.null) . lines <$> readFile fn
 
