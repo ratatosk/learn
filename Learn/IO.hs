@@ -22,8 +22,7 @@ writeRow r = intercalate "," $ P.map show $ toList r
 writeMat :: (Show e, Source r e) => FilePath -> Array r DIM2 e -> IO ()
 writeMat fn m = let (Z :. rn :. _) = extent m
                     rows = P.map (\n -> slice m (Any :. n :. All)) [0..rn - 1]
-                in do 
-                  writeFile fn $ intercalate "\n" $ P.map writeRow rows
+                in writeFile fn $ intercalate "\n" $ P.map writeRow rows
 
 writeVec :: (Show e, Source r e) => FilePath -> Array r DIM1 e -> IO ()
 writeVec fn v = writeMat fn $ extend (Any :. (1 :: Int) :. All) v 
@@ -32,7 +31,6 @@ commaSep :: String -> [String]
 commaSep s = case break (== ',') s of 
   ([], _) -> []
   (x, xs) -> (x : commaSep (dropWhile (==',') xs))
-
 
 -- TODO: use bytestrings and attoparsec to reduce memory usage (which is enormous)
   
