@@ -2,7 +2,7 @@ module Main where
 
 import Data.Maybe
 
-import Data.Array.Repa
+import Data.Array.Repa hiding ((++))
 import Data.Array.Repa.Repr.ForeignPtr
 import Data.Array.Repa.IO.Binary
 
@@ -12,21 +12,21 @@ import System.FilePath.Posix
 
 import Learn.IO
 
-txt2bin :: FilePath -> Int -> Int -> IO ()
-txt2bin fn r c = do
-  mat <- readMat fn r c :: IO (Array U DIM2 Double)
-  writeArrayToStorableFile fn mat
+txt2bin :: FilePath -> FilePath -> Int -> Int -> IO ()
+txt2bin from to r c = do
+  mat <- readMat from r c :: IO (Array U DIM2 Double)
+  writeArrayToStorableFile to mat
   
-bin2txt :: FilePath -> Int -> Int -> IO ()
-bin2txt fn r c = do
-  mat <- readArrayFromStorableFile fn (Z :. r :. c) :: IO (Array F DIM2 Double)
-  writeMat fn mat
+bin2txt :: FilePath -> FilePath -> Int -> Int -> IO ()
+bin2txt from to r c = do
+  mat <- readArrayFromStorableFile from (Z :. r :. c) :: IO (Array F DIM2 Double)
+  writeMat to mat
   
 
 convert :: FilePath -> Int -> Int -> IO ()
-convert fn r c = case takeExtension fn of
-  ".txt" -> txt2bin fn r c
-  ".bin" -> bin2txt fn r c
+convert fn r c = case splitExtension fn of
+  (n, ".txt") -> txt2bin fn (n ++ ".bin") r c
+  (n, ".bin") -> bin2txt fn (n ++ ".txt") r c
   _ -> do 
     putStrLn "unknown file type"
     exitFailure
