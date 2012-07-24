@@ -13,21 +13,18 @@ import Control.Applicative ((<$>))
 
 import Data.List
 
-import System.IO
-
 import Data.Array.Repa                          as R
 import Data.Array.Repa.Repr.Unboxed             as R
 
-writeRow :: (Show e, Source r e) => Handle -> Array r DIM1 e -> IO ()
-writeRow h r = hPutStrLn h $ intercalate ", " $ P.map show $ toList r
+writeRow :: (Show e, Source r e) => Array r DIM1 e -> String
+writeRow r = intercalate "," $ P.map show $ toList r
 
 writeMat :: (Show e, Source r e) => FilePath -> Array r DIM2 e -> IO ()
 writeMat fn m = let (Z :. rn :. _) = extent m
                     rows = P.map (\n -> slice m (Any :. n :. All)) [0..rn - 1]
                 in do 
-                  h <- openFile fn WriteMode
-                  mapM_ (writeRow h) rows
-  
+                  writeFile fn $ intercalate "\n" $ P.map writeRow rows
+
 writeVec :: (Show e, Source r e) => FilePath -> Array r DIM1 e -> IO ()
 writeVec fn v = writeMat fn $ extend (Any :. (1 :: Int) :. All) v 
     
