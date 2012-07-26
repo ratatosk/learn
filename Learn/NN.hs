@@ -45,6 +45,13 @@ randInput seed h w = randomishDoubleArray (Z :. h :. w) 0.0 1.0 seed
 yFromList :: [Double] -> Int -> UMat
 yFromList ys nc = fromListUnboxed (Z :. (length ys `div` nc) :. nc) ys
 
+deepSeqLayer :: Layer -> b -> b
+deepSeqLayer (w, b) x = w `deepSeqArray` b `deepSeqArray` x
+
+deepSeqNN :: NN -> b -> b
+deepSeqNN [] x = x
+deepSeqNN (l:ls) x = deepSeqLayer l $ deepSeqNN ls x
+
 {-# INLINE sigmoid #-}
 sigmoid :: Double -> Double
 sigmoid x = 1 / (1 + exp (-x))
@@ -130,15 +137,22 @@ logPenalty a y = - y * log a - (1 - y) * log (1 - a)
 hypothesis :: Monad m => NN -> UMat -> m UMat
 hypothesis nn x = liftM (last . snd) $ forwardP nn x
 
+-- ^ computes logPenalty based cost function
+cost :: Monad m => NN -> UMat -> UMat -> m Double
+cost nn x y = do
+  let m = row $ extent y
+  (_, a) <- forwardP nn x
+  liftM (/ fromIntegral m) $ sumAllP $ R.zipWith logPenalty (last a) y
+
 -- ^ computes const and gradient using logPenalty cost function
 costNGradient :: Monad m => NN -> UMat -> UMat -> m (Double, NN)
 costNGradient nn x y = do
   let m = row $ extent y
   (z, a) <- forwardP nn x
-  cost <- liftM (/ fromIntegral m) $ sumAllP $ R.zipWith logPenalty (last a) y
+  c <- liftM (/ fromIntegral m) $ sumAllP $ R.zipWith logPenalty (last a) y
   e <- errorsP y nn z a
   grad <- gradientP e (x:a)
-  return (cost, grad)
+  return (c, grad)
 
 -- omg...
 mapPair :: (Shape sh1, Shape sh2) => (forall sh' . Shape sh' => Array U sh' Double -> Array U sh' Double -> Array U sh' Double) -> (Array U sh1 Double, Array U sh2 Double) -> (Array U sh1 Double, Array U sh2 Double) -> (Array U sh1 Double, Array U sh2 Double)
@@ -147,3 +161,27 @@ mapPair f (x1, y1) (x2, y2) = (f x1 x2, f y1 y2)
 -- ^ sum network weight and bias units with gradients
 nnSumS :: NN -> NN -> Double -> NN
 nnSumS nn grad alpha = Prelude.zipWith (mapPair $ (\m1 m2 -> computeS $ R.zipWith (\a b -> a - alpha * b) m1 m2)) nn grad
+
+matToVec :: Source r e => Array r DIM2 e -> Array D DIM1 e
+matToVec m = let (Z :. r :. c) = extent m in reshape (Z :. r * c) m 
+    
+vecToMat :: Source r e => Int -> Int -> Array r DIM1 e -> Array D DIM2 e
+vecToMat r c m = reshape (Z :. r :. c) m
+
+layerToVec :: Layer -> Array D DIM1 Double
+layerToVec (w, b) = R.append (mToVec w) b
+
+vecToLayer :: Source r Double => Int -> Int -> Array r DIM1 Double -> Layer
+vecToLayer i o v = let 
+  ms = (Z :. o * i)
+  w = vecToMat o i $ extract (Z :. 0) ms v
+  b = extract ms (Z :. o) v
+  in (computeS w, computeS b)
+
+-- ^ unroll all neural network parameters to single vector - needed for advanced optimization algorithms
+nnToVectorS :: NN -> UVec
+nnToVectorS nn = computeS $ foldr1 R.append $ map layerToVec nn
+
+
+vectorToNN :: NNShape -> UVec -> NN
+vectorToNN = error "TODO:"
