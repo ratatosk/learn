@@ -162,7 +162,7 @@ mapPair f (x1, y1) (x2, y2) = (f x1 x2, f y1 y2)
 
 -- ^ sum network weight and bias units with gradients
 nnSumS :: NN -> NN -> Double -> NN
-nnSumS nn grad alpha = P.zipWith (mapPair $ (\m1 m2 -> computeS $ R.zipWith (\a b -> a - alpha * b) m1 m2)) nn grad
+nnSumS nn grad alpha = P.zipWith (mapPair $ (\m1 m2 -> computeS $ R.zipWith (\a b -> a + alpha * b) m1 m2)) nn grad
 
 matToVec :: Source r e => Array r DIM2 e -> Array D DIM1 e
 matToVec m = let (Z :. r :. c) = extent m in reshape (Z :. r * c) m 
@@ -181,12 +181,12 @@ vecToLayer i o s v =
   in (computeS w, computeS b)
 
 -- ^ unroll all neural network parameters to single vector - needed for advanced optimization algorithms
-nnToVectorS :: NN -> UVec
-nnToVectorS nn = computeS $ foldr1 R.append $ P.map layerToVec nn
+nnToVector :: NN -> UVec
+nnToVector nn = computeS $ foldr1 R.append $ P.map layerToVec nn
 
 vectorToNN :: NNShape -> UVec -> NN
 vectorToNN sh v = 
-  let starts = 0 : (scanl1 (+) $ P.map (uncurry (*)) $ zip sh $ tail sh)
+  let starts = 0 : (scanl1 (+) $ P.map (\(i, o) -> i * o + o) $ zip sh $ tail sh)
   in P.map (\(s, i, o) -> vecToLayer i o s v) $ zip3 starts (init sh) (tail sh)
       
   
