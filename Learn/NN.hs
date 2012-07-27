@@ -1,6 +1,8 @@
-{-# LANGUAGE ExistentialQuantification, Rank2Types #-}
+{-# LANGUAGE ExistentialQuantification, Rank2Types, FlexibleContexts #-}
 
 module Learn.NN where
+
+import Prelude as P
 
 import Control.Monad (liftM)
 
@@ -160,7 +162,7 @@ mapPair f (x1, y1) (x2, y2) = (f x1 x2, f y1 y2)
 
 -- ^ sum network weight and bias units with gradients
 nnSumS :: NN -> NN -> Double -> NN
-nnSumS nn grad alpha = Prelude.zipWith (mapPair $ (\m1 m2 -> computeS $ R.zipWith (\a b -> a - alpha * b) m1 m2)) nn grad
+nnSumS nn grad alpha = P.zipWith (mapPair $ (\m1 m2 -> computeS $ R.zipWith (\a b -> a - alpha * b) m1 m2)) nn grad
 
 matToVec :: Source r e => Array r DIM2 e -> Array D DIM1 e
 matToVec m = let (Z :. r :. c) = extent m in reshape (Z :. r * c) m 
@@ -169,19 +171,22 @@ vecToMat :: Source r e => Int -> Int -> Array r DIM1 e -> Array D DIM2 e
 vecToMat r c m = reshape (Z :. r :. c) m
 
 layerToVec :: Layer -> Array D DIM1 Double
-layerToVec (w, b) = R.append (mToVec w) b
+layerToVec (w, b) = R.append (matToVec w) b
 
-vecToLayer :: Source r Double => Int -> Int -> Array r DIM1 Double -> Layer
-vecToLayer i o v = let 
-  ms = (Z :. o * i)
-  w = vecToMat o i $ extract (Z :. 0) ms v
-  b = extract ms (Z :. o) v
+-- ^ convert vector to NN layer given fan-in, fan-out and offset from the beginning of the vector
+vecToLayer :: Source r Double => Int -> Int -> Int ->  Array r DIM1 Double -> Layer
+vecToLayer i o s v = 
+  let w = vecToMat o i $ extract (Z :. s) (Z :. o * i) v
+      b = extract (Z :. o * i + s) (Z :. o) v
   in (computeS w, computeS b)
 
 -- ^ unroll all neural network parameters to single vector - needed for advanced optimization algorithms
 nnToVectorS :: NN -> UVec
-nnToVectorS nn = computeS $ foldr1 R.append $ map layerToVec nn
-
+nnToVectorS nn = computeS $ foldr1 R.append $ P.map layerToVec nn
 
 vectorToNN :: NNShape -> UVec -> NN
-vectorToNN = error "TODO:"
+vectorToNN sh v = 
+  let starts = 0 : (scanl1 (+) $ P.map (uncurry (*)) $ zip sh $ tail sh)
+  in P.map (\(s, i, o) -> vecToLayer i o s v) $ zip3 starts (init sh) (tail sh)
+      
+  
