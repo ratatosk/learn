@@ -12,11 +12,10 @@ import Data.Array.Repa                  as R
 import Data.Array.Repa.Algorithms.Matrix
 import Data.Array.Repa.Algorithms.Randomish
 
+import Learn.Types
+
 -- Number of neurons in every layer
 type NNShape = [Int]
-
-type UMat = Array U DIM2 Double
-type UVec = Array U DIM1 Double
 
 -- Input weights and bias unit weights
 type Layer = (UMat, UVec)
