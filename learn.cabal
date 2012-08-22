@@ -57,28 +57,6 @@ executable simpleclassifier
   other-modules:
     Learn.NN Learn.IO
 
-executable lazybench
-  ghc-options:
-   -Wall -fno-warn-missing-signatures
-   -Odph
-   -fno-liberate-case
-   -fsimplifier-phases=4
-   -funfolding-use-threshold=1000
-   -funfolding-keeness-factor=1000
-   -funbox-strict-fields
-   -fcpr-off
-   -fllvm
-   -optlo-O3
-   -threaded
-
-  build-depends:
-    base == 4.5.*,
-    repa >= 3.2,
-    repa-algorithms >= 3.2
-  main-is: test/LazyBench.hs
-  other-modules:
-    Learn.NN Learn.IO
-    
 executable matconvert
   build-depends:
     base == 4.5.*,
