@@ -13,6 +13,29 @@ chose min max = min + (max - min) / 10
 aMax :: Double
 aMax = 1.0
 
+interpolateNormMin x1
+
+-- Cubic Hermite spline based on values of function and its first derivatives
+interpolateMin :: Double -> Double -> Double -> Double -> Double
+interpolateMin p0 p1 m0 m1 = case cubicMin a b c of
+  Nothing -> minBound
+  Just x -> if spline x < minBoundVal then x else minBound
+  where
+    (minBound, minBoundVal) = if p0 < p1 then (0, p0) else (1, p1)
+    a = 2*p0 + m0 -2*p1 + m1
+    b = -3*p0 - 2*m0 + 3*p1 - m1
+    c = m0
+    d = p1
+    spline x = x*x*x*a + x*x*b + x*c + d -- we omit the last coefficient as it doesn't affect comparison
+
+-- find minimum of cubic polynomial (last coefficient is omitted)
+cubicMin :: Double -> Double -> Double -> Maybe Double
+cubicMin a b c = if det > 0
+                 then Just $ (-b + sqrt det) / (3 * a) -- determinant is taken with plus for minimum
+                 else Nothing
+  where
+    det = b*b-3*a*c
+
 -- ^ line search algorithm form the book:
 -- Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, Algorithm 3.5
 lineSearch :: Monad m => StopCondition -> Double -> Double -> Double -> Function -> UVec -> UVec -> m UVec
@@ -32,7 +55,8 @@ lineSearch sc c1 c2 fn start dir =
                  | abs pa2' <= -c2 * p0' -> return a2
                  | pa2' > 0 -> zoom a2 a1
                  | otherwise -> step a2 (chose a2 aMax) pa2 pa2' False
-    zoom a1 a2 = ...
+
+    zoom a1 a2 pa1 pa2 = 
                    
 
   
