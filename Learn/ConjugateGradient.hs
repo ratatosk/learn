@@ -3,6 +3,7 @@
 module Learn.ConjugateGradient where
 
 import Control.Monad
+import Control.Applicative
 
 import Data.Maybe
 import Data.Array.Repa as R
@@ -47,10 +48,10 @@ interpolateMinNorm p₀ p₁ m₀ m₁ =
 
 -- normalize values as if we have values of function and tangent at 0 and 1, then find minimum
 cubicOrBisect :: Double -> Double -> Double -> Double -> Double -> Double -> Double
-cubicOrBisect a₀ a₁ p0 p₁ m₀ m₁ = a₀ + x * len
+cubicOrBisect a₀ a₁ p₀ p₁ m₀ m₁ = a₀ + x * len
   where
     len = a₁ - a₀
-    x = fromMaybe 0.5 $ interpolateMinNorm p0 p₁ (m₀ * len) (m₁ * len)
+    x = fromMaybe 0.5 $ interpolateMinNorm p₀ p₁ (m₀ * len) (m₁ * len)
 
 -- find minimum of cubic polynomial (last coefficient is omitted)
 -- to avoid endless loops somewhere in the calling code (zoom)
@@ -103,22 +104,21 @@ conjugateGradient sc fn start =
     (f₀, f₀') <- fn start  -- get value and gradient at start
     f₀'norm <- sumAllP $ f₀' *^ f₀'
     let p₀ = R.map negate f₀' -- initial search direction is the steepest descent direction
-    loop start p₀ f₀' 0
+    loop start p₀ f₀' 0 0
+
   where
     (Z :. n) = extent start
+
     loop x_ p_ f_' i ir = do
-      a <- lineSearch fn x_ p_
-      x <- computeP $ x_ +^ R.map (* a) p_ -- TODO: it is actually computed during line search
-      (f, f') <- fn x
-      f_'norm <- sumAllP $ f_' *^ f_'
-      betNom <- sumAllP $ f' *^ (f' -^ f_')
-      let beta = betNom / f_'norm
-          (betaPlus, restarted) = if beta > 0 || ir >= n -- if beta went below zero or at least every n'th iteration
+      (x, f, f') <- lineSearch fn x_ p_
+      beta <- betaPR f_' f'
+      let (betaPlus, restarted) = if beta > 0 || ir >= n -- if beta went below zero or at least every n'th iteration
                                   then (beta, False)    -- we restart using use steepest descent direction
                                   else (0, True) 
       p <- computeP $ R.map (* betaPlus) p_ -^ f'
       if checkIter sc i
         then return x
         else loop x p f' (i+1) (if restarted then 0 else ir+1)
-          
+
+    betaPR prev cur = (/) <$> sumAllP (prev *^ prev) <*> sumAllP (cur *^ (cur -^ prev))
     
