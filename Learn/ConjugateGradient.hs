@@ -87,6 +87,7 @@ lineSearch fn start dir =
                    | pj' * (ah - al) >= 0 -> zoom al aj pl pj pl' pj' -- move upper bound
                    | otherwise -> zoom aj ah pj ph pj' ph' -- move lower bound
 
+-- Polack-Ribiere conjugate method 
 conjugateGradient :: Monad m => StopCondition -> Function -> UVec -> m UVec
 conjugateGradient sc fn start =
   do
@@ -100,7 +101,7 @@ conjugateGradient sc fn start =
       x <- computeP $ x +^ R.map (* a) p
       (f, f') <- fn x
       f'norm <- sumAllP $ f' *^ f'
-      let beta = f'norm / f_'norm
+      let beta = f'norm / f_'norm -- TODO: FR -> PR + restart
       p <- computeP $ R.map (* beta) p_ -^ f'
       if checkIter sc i
         then return x
