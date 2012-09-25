@@ -89,22 +89,26 @@ lineSearch fn start dir =
 
 -- Polack-Ribiere conjugate method 
 conjugateGradient :: Monad m => StopCondition -> Function -> UVec -> m UVec
-conjugateGradient sc fn start =
+conjugateGradient sc fn start = let (Z :. n) = extent start in
   do
     (f0, f0') <- fn start  -- get value and gradient at start
     f0'norm <- sumAllP $ f0' *^ f0'
     let p0 = R.map neg f0' -- initial search direction is the steepest descent direction
-    loop start p0 f0'norm 0
+    loop start p0 f0' 0
   where 
-    loop x_ p_ f_'norm i = do
+    loop x_ p_ f_' i = do
       a <- lineSearch fn x_ p
-      x <- computeP $ x +^ R.map (* a) p
+      x <- computeP $ x +^ R.map (* a) p -- TODO: it is actually computed during line search
       (f, f') <- fn x
-      f'norm <- sumAllP $ f' *^ f'
-      let beta = f'norm / f_'norm -- TODO: FR -> PR + restart
+      f_'norm <- sumAllP $ f_' *^ f_'
+      betNom <- sumAllP $ f' *. (f' -^ f_')
+      let beta = betNom / f_'norm
+          (betaPlus, restarted) = if beta > 0 || ir >= n -- if beta went below zero or at least every n'th iteration
+                                  then (beta, False)    -- we restart using use steepest descent direction
+                                  else (0, True) 
       p <- computeP $ R.map (* beta) p_ -^ f'
       if checkIter sc i
         then return x
-        else loop x p f'norm (i+1)
+        else loop x p f' (i+1) (if restarted then 0 else ir+1)
           
     
