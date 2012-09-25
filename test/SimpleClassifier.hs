@@ -4,6 +4,7 @@ import Control.Applicative
 
 import Data.Array.Repa as R
 
+import Learn.Types
 import Learn.IO
 import Learn.NN
 import Learn.Util

@@ -1,3 +1,5 @@
+{-# LANGUAGE Rank2Types #-}
+
 module Learn.Optimization where
 
 import Learn.Types

@@ -1,5 +1,6 @@
 module Learn.GradientDescent where
 
+import Learn.Types
 import Learn.NN
 
 step :: Monad m => NN -> UMat -> UMat -> Double -> m (NN, Double)

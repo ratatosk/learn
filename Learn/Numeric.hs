@@ -5,6 +5,7 @@ import Control.Monad (liftM)
 
 import Data.Array.Repa as R
 
+import Learn.Types
 import Learn.NN
 
 -- ^ apply delta to matrix element

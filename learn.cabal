@@ -34,6 +34,8 @@ library
     Learn.IO
     Learn.Util
     Learn.GradientDescent
+    Learn.Optimization
+    Learn.ConjugateGradient
 
 executable simpleclassifier
   ghc-options:
