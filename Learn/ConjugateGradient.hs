@@ -7,6 +7,10 @@ import Data.Array.Repa as R
 import Learn.Types
 import Learn.Optimization
 
+-- Underscores like in x_ means roughly "x value from previous iteration" whenever new x is calculated
+
+-- Constants:
+
 -- ^ procedure to chose next step length. TODO: tune it
 chose :: Double -> Double -> Double
 chose min max = min + (max - min) / 10
@@ -14,6 +18,12 @@ chose min max = min + (max - min) / 10
 -- ^ maximum step length, TODO: tune it
 aMax :: Double
 aMax = 1.0
+
+-- ^ constants for strong Wolfe conditions recommended by Nocedal:
+c1 :: Double
+c1 = 0.0001
+c2 :: Double
+c2 = 0.1
 
 -- Cubic Hermite spline based on values of function and its first derivatives
 -- If there is no extremum in the interval or if it is not minimum, just bisect
@@ -49,15 +59,15 @@ cubicMin a b c = if det > 0
 
 -- ^ line search algorithm form the book:
 -- Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, Algorithm 3.5
-lineSearch :: Monad m => StopCondition -> Double -> Double -> Double -> Function -> UVec -> UVec -> m UVec
-lineSearch sc c1 c2 fn start dir =
+lineSearch :: Monad m => Function -> UVec -> UVec -> m UVec
+lineSearch fn start dir =
   do (p0, p0') <- phi 0 -- TODO: value and derivative at starting point should already be calculated
      step 0 (chose 0 aMax) p0  p0' False
   where
     phi a = do -- phi(a) = fn(start + a * dir), univariate representation of step length selection problem
-      x <- computeP $ start +^ R.map(* a) di
+      x <- computeP $ start +^ R.map (* a) dir
       (val, grad) <- fn x
-      grad' <- foldAllP <$> grad *^ dir -- projection of gradient on search direction
+      grad' <- sumAllP $ grad *^ dir -- projection of gradient on search direction
       return (val, grad')
 
     step a1 a2 pa1 pa1' first = do
@@ -72,10 +82,28 @@ lineSearch sc c1 c2 fn start dir =
       let aj = cubicOrBisect al ah pl ph pl' ph'
       (pj, pj') <- phi aj
       case () of _
-                   | pj > p0 + cl * al * p0' || pj >= pl -> zoom al aj pl pj pl' pj'
-                   | abs pj' <= - c2 * p0' -> aj
-                   | pj' * (ah - al) >= 0 -> zoom al aj pl pj pl' pj'
-                   | otherwise -> zoom aj ah pj ph pj' ph'
+                   | pj > p0 + cl * al * p0' || pj >= pl -> zoom al aj pl pj pl' pj' -- move upper bound
+                   | abs pj' <= - c2 * p0' -> return aj
+                   | pj' * (ah - al) >= 0 -> zoom al aj pl pj pl' pj' -- move upper bound
+                   | otherwise -> zoom aj ah pj ph pj' ph' -- move lower bound
 
 conjugateGradient :: Monad m => StopCondition -> Function -> UVec -> m UVec
-conjugateGradient = ...
+conjugateGradient sc fn start =
+  do
+    (f0, f0') <- fn start  -- get value and gradient at start
+    f0'norm <- sumAllP $ f0' *^ f0'
+    let p0 = R.map neg f0' -- initial search direction is the steepest descent direction
+    loop start p0 f0'norm 0
+  where 
+    loop x_ p_ f_'norm i = do
+      a <- lineSearch fn x_ p
+      x <- computeP $ x +^ R.map (* a) p
+      (f, f') <- fn x
+      f'norm <- sumAllP $ f' *^ f'
+      let beta = f'norm / f_'norm
+      p <- computeP $ R.map (* beta) p_ -^ f'
+      if checkIter sc i
+        then return x
+        else loop x p f'norm (i+1)
+          
+    

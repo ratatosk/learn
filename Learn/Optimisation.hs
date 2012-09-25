@@ -9,3 +9,11 @@ type Function = Monad m => UVec -> m (Double, UVec)
 data StopCondition = StopCondition { tol :: Maybe (Double -> Double -> Bool) -- ^ decide based on two consecutive function values
                                    , maxIter :: Maybe Int -- ^ maximum number of optimization steps
                                    }
+
+checkIter :: StopCondition -> Int -> Bool
+checkIter StopCondition {maxIter = Just m} i = i >= m
+checkIter _ _ = False
+
+checkTol :: StopCondition -> Double -> Double -> Bool
+checkTol StopCondition {tol = Just t} prev cur = t prev cur
+checkTol _ _ _ = False
