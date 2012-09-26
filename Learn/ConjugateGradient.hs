@@ -65,7 +65,7 @@ cubicMin a b c = if det > 0
 
 -- ^ line search algorithm form the book:
 -- Jorge Nocedal, StepHighen J. Wright, Numerical Optimization, Second Edition, Algorithm 3.5
-lineSearch :: Monad m => Function -> UVec -> UVec -> m (UVec, Double, UVec)
+lineSearch :: Monad m => Function m -> UVec -> UVec -> m (UVec, Double, UVec)
 lineSearch fn start dir =
   do
     (_, p₀, p₀', _) <- φ 0 -- TODO: value and derivative at starting point should already be calculated
@@ -97,7 +97,7 @@ lineSearch fn start dir =
       return (x, p, p', gp)
 
 -- Polack-Ribiere conjugate gradient method 
-conjugateGradient :: Monad m => StopCondition -> Function -> UVec -> m UVec
+conjugateGradient :: Monad m => StopCondition -> Function m -> UVec -> m (UVec, Double)
 conjugateGradient sc fn start = 
   do
     (_, f₀') <- fn start  -- get value and gradient at start
@@ -108,14 +108,14 @@ conjugateGradient sc fn start =
     (Z :. n) = extent start
 
     loop x_ p_ f_' i ir = do
-      (x, _, f') <- lineSearch fn x_ p_
+      (x, f, f') <- lineSearch fn x_ p_
       beta <- betaPR f_' f'
       let (betaPlus, restart) = if beta > 0 || ir >= n -- if beta went below zero or at least every n'th iteration
                                 then (beta, False)    -- we restart using steepest descent direction
                                 else (0, True)
       p <- computeP $ R.map (* betaPlus) p_ -^ f'
       if checkIter sc i -- TODO: add tolerance test
-        then return x
+        then return (x, f)
         else loop x p f' (i+1) (if restart then 0 else ir+1)
 
     betaPR prev cur = (/) `liftM` sumAllP (prev *^ prev) `ap` sumAllP (cur *^ (cur -^ prev))

@@ -190,7 +190,7 @@ vector2NN sh v =
   in P.map (\(s, i, o) -> vec2Layer i o s v) $ zip3 starts (init sh) (tail sh)
 
 -- ^ convert training set to optimization target
-ts2Function :: NNShape -> UMat -> UMat -> Function
+ts2Function :: Monad m => NNShape -> UMat -> UMat -> Function m
 ts2Function sh x y nnVec = do
   (c, nnGrad) <- costNGradient (vector2NN sh nnVec) x y
   return (c, nn2Vector nnGrad)

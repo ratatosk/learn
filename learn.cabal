@@ -56,6 +56,7 @@ executable simpleclassifier
     base == 4.5.*,
     learn,
     repa >= 3.2,
+    repa-io >= 3.2,
     repa-algorithms >= 3.2
 
 executable opttest
