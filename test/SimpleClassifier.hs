@@ -12,6 +12,16 @@ import Learn.GradientDescent
 
 import System.Environment
 
+{- /tmp/X.txt and /tmp/y.txt should be created like this:
+in octave:
+load("ex4data1.mat") % ex4data1.mat is from exercise4 of Stanford ML class
+dlmwrite("/tmp/X.txt", X)
+dlmwrite("/tmp/y.txt", y)
+
+in shell:
+sed -i 's/10/0/' /tmp/y.txt # in this assignment zeros are marked as 10
+-}
+
 main :: IO ()
 main = do
   iters <- read . head <$> getArgs

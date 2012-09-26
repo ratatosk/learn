@@ -13,6 +13,7 @@ import Data.Array.Repa.Algorithms.Matrix
 import Data.Array.Repa.Algorithms.Randomish
 
 import Learn.Types
+import Learn.Optimization
 
 -- Number of neurons in every layer
 type NNShape = [Int]
@@ -163,29 +164,33 @@ mapPair f (x1, y1) (x2, y2) = (f x1 x2, f y1 y2)
 nnSumS :: NN -> NN -> Double -> NN
 nnSumS nn grad alpha = P.zipWith (mapPair $ (\m1 m2 -> computeS $ R.zipWith (\a b -> a + alpha * b) m1 m2)) nn grad
 
-matToVec :: Source r e => Array r DIM2 e -> Array D DIM1 e
-matToVec m = let (Z :. r :. c) = extent m in reshape (Z :. r * c) m 
+mat2Vec :: Source r e => Array r DIM2 e -> Array D DIM1 e
+mat2Vec m = let (Z :. r :. c) = extent m in reshape (Z :. r * c) m
     
-vecToMat :: Source r e => Int -> Int -> Array r DIM1 e -> Array D DIM2 e
-vecToMat r c m = reshape (Z :. r :. c) m
+vec2Mat :: Source r e => Int -> Int -> Array r DIM1 e -> Array D DIM2 e
+vec2Mat r c m = reshape (Z :. r :. c) m
 
-layerToVec :: Layer -> Array D DIM1 Double
-layerToVec (w, b) = R.append (matToVec w) b
+layer2Vec :: Layer -> Array D DIM1 Double
+layer2Vec (w, b) = R.append (mat2Vec w) b
 
 -- ^ convert vector to NN layer given fan-in, fan-out and offset from the beginning of the vector
-vecToLayer :: Source r Double => Int -> Int -> Int ->  Array r DIM1 Double -> Layer
-vecToLayer i o s v = 
-  let w = vecToMat o i $ extract (Z :. s) (Z :. o * i) v
+vec2Layer :: Source r Double => Int -> Int -> Int ->  Array r DIM1 Double -> Layer
+vec2Layer i o s v =
+  let w = vec2Mat o i $ extract (Z :. s) (Z :. o * i) v
       b = extract (Z :. o * i + s) (Z :. o) v
   in (computeS w, computeS b)
 
 -- ^ unroll all neural network parameters to single vector - needed for advanced optimization algorithms
-nnToVector :: NN -> UVec
-nnToVector nn = computeS $ foldr1 R.append $ P.map layerToVec nn
+nn2Vector :: NN -> UVec
+nn2Vector nn = computeS $ foldr1 R.append $ P.map layer2Vec nn
 
-vectorToNN :: NNShape -> UVec -> NN
-vectorToNN sh v = 
+vector2NN :: NNShape -> UVec -> NN
+vector2NN sh v =
   let starts = 0 : (scanl1 (+) $ P.map (\(i, o) -> i * o + o) $ zip sh $ tail sh)
-  in P.map (\(s, i, o) -> vecToLayer i o s v) $ zip3 starts (init sh) (tail sh)
-      
-  
+  in P.map (\(s, i, o) -> vec2Layer i o s v) $ zip3 starts (init sh) (tail sh)
+
+-- ^ convert training set to optimization target
+ts2Function :: NNShape -> UMat -> UMat -> Function
+ts2Function sh x y nnVec = do
+  (c, nnGrad) <- costNGradient (vector2NN sh nnVec) x y
+  return (c, nn2Vector nnGrad)

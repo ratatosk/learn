@@ -6,7 +6,7 @@ import Learn.NN
 step :: Monad m => NN -> UMat -> UMat -> Double -> m (NN, Double)
 step nn x y a = do
   (c, g) <- costNGradient nn x y
-  return (nnSumS nn g a, c)
+  return (nnSumS nn g (negate a), c)
 
 runGradientDescent :: Monad m => NN -> UMat -> UMat -> Double -> Int -> m (NN, Double)
 runGradientDescent nn x y alpha iter = do

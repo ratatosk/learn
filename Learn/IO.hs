@@ -4,7 +4,8 @@
 --   And vice versa you can read files written like this:
 --   dlmwrite("filename.txt", A)
 --   Format is very simple: every row is written as one line of comma separated values without spaces
-
+--   Warning: it is slow as shit, don't even think about using it for large data sets,
+--   use matconvert and binary format
 module Learn.IO where
 
 import Prelude as P
