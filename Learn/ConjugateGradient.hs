@@ -12,6 +12,8 @@ import Learn.Optimization
 
 -- Underscores like in x_ means roughly "x value from previous iteration" whenever new x is calculated
 
+-- TODO: maybe reduce parallelism somewhere? benchmark sumAllP vs. sumAllS, or decide in runtime depending on size
+
 -- Constants:
 
 -- ^ procedure to chose next step length. TODO: tune it
@@ -37,7 +39,7 @@ interpolateMinNorm p₀ p₁ m₀ m₁ =
       b = -3*p₀ - 2*m₀ + 3*p₁ - m₁
       c = m₀
       d = p₁
-      spline x = x*x*x*a + x*x*b + x*c + d
+      spline x = a*x*x*x + b*x*x + c*x + d
   in do
     x <- cubicMin a b c
     guard $ x * (1 - x) >= 0.05 -- if it is less then zero, minimum is outside [0;1]
@@ -94,8 +96,6 @@ lineSearch fn start dir =
       p' <- sumAllP $ gp *^ dir -- projection of gradient on search direction
       return (x, p, p', gp)
 
-         
-
 -- Polack-Ribiere conjugate gradient method 
 conjugateGradient :: Monad m => StopCondition -> Function -> UVec -> m UVec
 conjugateGradient sc fn start = 
@@ -111,7 +111,7 @@ conjugateGradient sc fn start =
       (x, _, f') <- lineSearch fn x_ p_
       beta <- betaPR f_' f'
       let (betaPlus, restart) = if beta > 0 || ir >= n -- if beta went below zero or at least every n'th iteration
-                                then (beta, False)    -- we restart using use steepest descent direction
+                                then (beta, False)    -- we restart using steepest descent direction
                                 else (0, True)
       p <- computeP $ R.map (* betaPlus) p_ -^ f'
       if checkIter sc i -- TODO: add tolerance test
