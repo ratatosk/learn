@@ -7,7 +7,7 @@ author:              Paul Graphov
 maintainer:          graphov@gmail.com
 category:            Math
 build-type:          Simple
-cabal-version:       >=1.8
+cabal-version:       >=1.14
 
 library
   build-depends:
@@ -38,6 +38,7 @@ library
     Learn.ConjugateGradient
 
 executable simpleclassifier
+  main-is: test/SimpleClassifier.hs
   ghc-options:
    -Wall -fno-warn-missing-signatures
    -Odph
@@ -53,11 +54,28 @@ executable simpleclassifier
 
   build-depends:
     base == 4.5.*,
+    learn,
     repa >= 3.2,
     repa-algorithms >= 3.2
-  main-is: test/SimpleClassifier.hs
-  other-modules:
-    Learn.NN Learn.IO
+
+executable opttest
+  main-is: test/OptTest.hs
+  ghc-options:
+    -Wall -fno-warn-missing-signatures
+    -Odph
+    -fno-liberate-case
+    -fsimplifier-phases=4
+    -funfolding-use-threshold=1000
+    -funfolding-keeness-factor=1000
+    -funbox-strict-fields
+    -fcpr-off
+    -fllvm
+    -optlo-O3
+    -threaded
+  build-depends:
+    base == 4.5.*,
+    learn,
+    repa >= 3.2
 
 executable matconvert
   build-depends:

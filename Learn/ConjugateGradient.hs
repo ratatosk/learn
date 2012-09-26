@@ -3,7 +3,6 @@
 module Learn.ConjugateGradient where
 
 import Control.Monad
-import Control.Applicative
 
 import Data.Maybe
 import Data.Array.Repa as R
@@ -17,7 +16,7 @@ import Learn.Optimization
 
 -- ^ procedure to chose next step length. TODO: tune it
 chose :: Double -> Double -> Double
-chose min max = min + (max - min) / 10
+chose low high = low + (high - low) / 10
 
 -- ^ maximum step length, TODO: tune it
 aMax :: Double
@@ -67,14 +66,14 @@ cubicMin a b c = if det > 0
 lineSearch :: Monad m => Function -> UVec -> UVec -> m (UVec, Double, UVec)
 lineSearch fn start dir =
   do
-    (_, p₀, _, p₀') <- φ 0 -- TODO: value and derivative at starting point should already be calculated
+    (_, p₀, p₀', _) <- φ 0 -- TODO: value and derivative at starting point should already be calculated
     
     let step a₁ a₂ p₁ p₁' first = do
-          (x2, p₂, p₂', gp₂) <- φ a₂
+          (x₂, p₂, p₂', gp₂) <- φ a₂
           case () of 
-            _ | p₂ > p₀ + c₁ * a₂ * p₀' || (p₂ > p₁ && not first) -> zoom a₁ a₂
-              | abs p₂' <= -c₂ * p₀' -> return (x2, p₂, gp₂)
-              | p₂' > 0 -> zoom a₂ a₁
+            _ | p₂ > p₀ + c₁ * a₂ * p₀' || (p₂ > p₁ && not first) -> zoom a₁ a₂ p₁ p₂ p₁' p₂'
+              | abs p₂' <= -c₂ * p₀' -> return (x₂, p₂, gp₂)
+              | p₂' > 0 -> zoom a₂ a₁ p₂ p₁ p₂' p₁'
               | otherwise -> step a₂ (chose a₂ aMax) p₂ p₂' False
 
         zoom aLow aHigh pLow pHigh pLow' pHigh' = do
@@ -101,24 +100,22 @@ lineSearch fn start dir =
 conjugateGradient :: Monad m => StopCondition -> Function -> UVec -> m UVec
 conjugateGradient sc fn start = 
   do
-    (f₀, f₀') <- fn start  -- get value and gradient at start
-    f₀'norm <- sumAllP $ f₀' *^ f₀'
-    let p₀ = R.map negate f₀' -- initial search direction is the steepest descent direction
+    (_, f₀') <- fn start  -- get value and gradient at start
+    p₀ <- computeP $ R.map negate f₀' -- initial search direction is the steepest descent direction
     loop start p₀ f₀' 0 0
 
   where
     (Z :. n) = extent start
 
     loop x_ p_ f_' i ir = do
-      (x, f, f') <- lineSearch fn x_ p_
+      (x, _, f') <- lineSearch fn x_ p_
       beta <- betaPR f_' f'
-      let (betaPlus, restarted) = if beta > 0 || ir >= n -- if beta went below zero or at least every n'th iteration
-                                  then (beta, False)    -- we restart using use steepest descent direction
-                                  else (0, True) 
+      let (betaPlus, restart) = if beta > 0 || ir >= n -- if beta went below zero or at least every n'th iteration
+                                then (beta, False)    -- we restart using use steepest descent direction
+                                else (0, True)
       p <- computeP $ R.map (* betaPlus) p_ -^ f'
-      if checkIter sc i
+      if checkIter sc i -- TODO: add tolerance test
         then return x
-        else loop x p f' (i+1) (if restarted then 0 else ir+1)
+        else loop x p f' (i+1) (if restart then 0 else ir+1)
 
-    betaPR prev cur = (/) <$> sumAllP (prev *^ prev) <*> sumAllP (cur *^ (cur -^ prev))
-    
+    betaPR prev cur = (/) `liftM` sumAllP (prev *^ prev) `ap` sumAllP (cur *^ (cur -^ prev))
