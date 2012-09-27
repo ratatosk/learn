@@ -75,14 +75,20 @@ cubicMin a b c = if det > 0
 -- ^ Strong Wolfe conditions check, for testing line search algorithms
 strongWolfe :: Double -> Double -> Double -> UVec -> UVec -> UVec -> Bool
 strongWolfe a f₀ f δf₀ δf p =
-  f <= f₀ + c₁ * a * sumAllS (δf₀ *^ p) &&            -- sufficient decrease
+  f <= f₀ + c₁ * a * sumAllS (δf₀ *^ p) &&                 -- sufficient decrease
   abs (sumAllS (δf *^ p)) <= abs (c₂ * sumAllS (δf₀ *^ p)) -- curvature
 
 
 {-
 FIXME: fix cubic interpolation for interval with swapped bounds.
-FIXME: add some checks if we our moves approach machine precision limit. And do something about it.
+FIXME: add some checks if we approach machine precision limit. And do something about it.
 -}
+
+{-trace ("nans1: " ++ show (isNaN a₁ || isNaN a₂ || isNaN f₁ || isNaN f₁')) $ -}
+{-trace ("nans1: " ++ show (hasNaNs x₂ || isNaN f₂ || isNaN f₂' || hasNaNs δf₂)) $ -}
+
+hasNaNs :: UVec -> Bool
+hasNaNs = isNaN . sumAllS
 
 -- ^ line search algorithm form the book:
 -- Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, Algorithm 3.5
@@ -91,12 +97,13 @@ lineSearch fn start dir =
   do
     (_, f₀, f₀', δf₀) <- φ 0 -- TODO: value and derivative at starting point should already be calculated
     let step a₁ a₂ f₁ f₁' first = do
-          (x₂, f₂, f₂', δf₂) <- φ a₂
-          case () of 
-            _ | f₂ > f₀ + c₁ * a₂ * f₀' || (f₂ > f₁ && not first) -> trace "zoom1" $ zoom a₁ a₂ f₁ f₂ f₁' f₂'
-              | abs f₂' <= -c₂ * f₀' -> trace "gotcha in step" $ return (a₂, x₂, f₂, δf₂)
-              | f₂' > 0 -> trace "zoom2" $ zoom a₂ a₁ f₂ f₁ f₂' f₁'
-              | otherwise -> trace "recur" $ step a₂ (chose a₂ aMax) f₂ f₂' True
+          (x₂, f₂, f₂', δf₂) <- trace ("nans1: " ++ show (isNaN a₁ || isNaN a₂ || isNaN f₁ || isNaN f₁')) $ φ a₂
+          trace ("nans2: " ++ show (hasNaNs x₂) ++ show (isNaN f₂) ++ show (isNaN f₂') ++ show (hasNaNs δf₂)) $ 
+            case () of 
+              _ | f₂ > f₀ + c₁ * a₂ * f₀' || (f₂ > f₁ && not first) -> trace "zoom1" $ zoom a₁ a₂ f₁ f₂ f₁' f₂'
+                | abs f₂' <= -c₂ * f₀' -> trace "gotcha in step" $ return (a₂, x₂, f₂, δf₂)
+                | f₂' > 0 -> trace "zoom2" $ zoom a₂ a₁ f₂ f₁ f₂' f₁'
+                | otherwise -> trace "recur" $ step a₂ (chose a₂ aMax) f₂ f₂' True
 
         zoom aLow aHigh fLow fHigh fLow' fHigh' = do
           --let aⱼ = cubicOrBisect aⱼ aHigh fLow fHigh fLow' fHigh'
@@ -104,15 +111,14 @@ lineSearch fn start dir =
           (xⱼ, fⱼ, fⱼ', δfⱼ) <- φ aⱼ
           traceShow (aLow, fLow, fLow', aⱼ, fⱼ, fⱼ', aHigh, fHigh, fHigh') $
             case () of
-              _ | fⱼ > f₀ + c₁ * aLow * f₀' || fⱼ >= fLow -> zoom aLow aⱼ fLow fⱼ fLow' fⱼ' -- move uffer bound
+              _ | fⱼ > f₀ + c₁ * aLow * f₀' || fⱼ >= fLow -> zoom aLow aⱼ fLow fⱼ fLow' fⱼ' -- move upper bound
                 | abs fⱼ' <= - c₂ * f₀' -> return (aⱼ, xⱼ, fⱼ, δfⱼ)
-                | fⱼ' * (aHigh - aLow) >= 0 -> zoom aLow aⱼ fLow fⱼ fLow' fⱼ' -- move uffer bound
+                | fⱼ' * (aHigh - aLow) >= 0 -> zoom aLow aⱼ fLow fⱼ fLow' fⱼ' -- move upper bound
                 | otherwise -> zoom aⱼ aHigh fⱼ fHigh fⱼ' fHigh' -- move lower bound
 
     (a, x, f, δf) <- trace ("calling step with f₀ = " ++ show f₀ ++ " and f₀' = " ++ show f₀') $ step 0 (chose 0 aMax) f₀  f₀' False
-    let wolfe1 = f <= f₀ + c₁ * a * sumAllS (δf₀ *^ dir)
-        wolfe2 = abs (sumAllS (δf *^ dir)) <= -c₂ * sumAllS (δf₀ *^ dir)
-    trace ("line search strong wolfe conditions checks: " ++ show wolfe1 ++ " " ++ show wolfe2) $ return (x, f, δf)
+    let wolfe = if strongWolfe a f₀ f δf₀ δf dir then "PASS" else "FAIL"
+    trace ("line search strong wolfe conditions checks: " ++ wolfe) $ return (x, f, δf)
 
 
   where

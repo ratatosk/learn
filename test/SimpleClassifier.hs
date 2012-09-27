@@ -41,16 +41,22 @@ main = do
   let shape = [400, 25, 10]
       inn = randInit 1 shape
   putStrLn $ x `deepSeqArray` y' `deepSeqArray` "Starting gradient descent..."
+
+  let func = ts2Function shape x y'
+      sc = StopCondition { tol = Nothing
+                         , maxIter = Just iters }
+      start = nn2Vector inn
+
   (nn, c) <- case method of
-    "GD" -> runGradientDescent inn x y' 1 iters
+    "GD2" -> do
+      (nnv, err) <- gradientDescent sc 1 func start
+      return (vector2NN shape nnv, err)
+    "GD" -> runGradientDescent inn x y' 20 iters
     "CG" -> do
-      let func = ts2Function shape x y'
-          sc = StopCondition { tol = Nothing
-                             , maxIter = Just iters }
-          start = nn2Vector inn
-      (nnv, cost) <- conjugateGradient sc func start
-      return (vector2NN shape nnv, cost)
+      (nnv, err) <- conjugateGradient sc func start
+      return (vector2NN shape nnv, err)
     _ -> error "method not supported"
+
   h <- hypothesis nn x
   ans <- predictionsToClasses h
   let correct = length $ filter id $ Prelude.zipWith (==) (toList y) (toList ans)

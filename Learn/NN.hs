@@ -7,7 +7,7 @@ import Prelude as P
 import Control.Monad (liftM)
 
 import Data.Array.Repa                  as R
---import Data.Array.Repa.Unsafe           as R
+import Data.Array.Repa.Unsafe           as R
 
 import Data.Array.Repa.Algorithms.Matrix
 import Data.Array.Repa.Algorithms.Randomish
@@ -64,7 +64,6 @@ sigmoid' x = sx * (1 - sx) where sx = sigmoid x
                                  
 -- TODO: try to remove NOINLINE annotations
 -- calculate weighted sums in parallel
--- TODO: switch to unsafeSlice after testing
 {-# NOINLINE weightedSumsP #-}
 weightedSumsP :: Monad m => UMat -> Layer -> m UMat
 weightedSumsP i (w, b)
@@ -75,8 +74,8 @@ weightedSumsP i (w, b)
          $ fromFunction (Z :. h1 :. w2)
          $ \ix -> b ! (Z :. col ix) + R.sumAllS 
                                        (R.zipWith (*)
-                                       (slice i (Any :. row ix :. All))
-                                       (slice w (Any :. col ix :. All)))
+                                       (unsafeSlice i (Any :. row ix :. All))
+                                       (unsafeSlice w (Any :. col ix :. All)))
                   
 -- TODO: Fuse it manually into mmultP to avoid allocation
 -- TODO: use R.*^
