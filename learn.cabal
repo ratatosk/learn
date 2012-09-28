@@ -64,6 +64,30 @@ executable simpleclassifier
     repa-io >= 3.2,
     repa-algorithms >= 3.2
 
+executable mnisttest
+  main-is: test/MNISTTest.hs
+  ghc-options:
+   -Wall -fno-warn-missing-signatures
+   -Odph
+   -fno-liberate-case
+   -fsimplifier-phases=4
+   -funfolding-use-threshold=1000
+   -funfolding-keeness-factor=1000
+   -funbox-strict-fields
+   -fcpr-off
+   -fllvm
+   -optlo-O3
+   -threaded
+  build-depends:
+    base == 4.5.*,
+    bytestring >= 0.9,
+    binary-strict >= 0.4,
+    logfloat >= 0.12,
+    learn,
+    repa >= 3.2,
+    repa-io >= 3.2,
+    repa-algorithms >= 3.2
+
 executable opttest
   main-is: test/OptTest.hs
   ghc-options:

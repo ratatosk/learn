@@ -4,8 +4,8 @@ module Learn.Util where
 
 import Data.Array.Repa as R
 
-classesToPredictions :: (Monad m, Source r Int) => Array r DIM1 Int -> Int -> m (Array U DIM2 Double)
-classesToPredictions c nClasses = computeP 
+classesToPredictions :: (Source r Int) => Int -> Array r DIM1 Int -> Array U DIM2 Double
+classesToPredictions nClasses c = computeS 
                                   $ fromFunction sh 
                                   $ \(Z :. row :. col) -> if col == c ! (Z :. row) then 1.0 else 0.0
   where
@@ -21,8 +21,8 @@ maxIdx a = maxIdx' 0 0
                                   then maxIdx' ptr (ptr + 1)
                                   else maxIdx' cur (ptr + 1)
            
-predictionsToClasses :: (Monad m, Source r Double) => Array r DIM2 Double -> m (Array U DIM1 Int)
-predictionsToClasses c = computeP 
+predictionsToClasses :: (Source r Double) => Array r DIM2 Double -> Array U DIM1 Int
+predictionsToClasses c = computeS 
                          $ fromFunction (Z :. r) 
                          $ \(Z :. i) -> maxIdx $ slice c (Any :. i :. All)
   where

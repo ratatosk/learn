@@ -14,21 +14,26 @@ import Data.Array.Repa as R
 import Data.Array.Repa.Repr.ByteString as R
 import Data.Array.Repa.Repr.Unboxed as R
 
-readArr :: (Unbox e, Num e, Shape sh) => FilePath -> sh -> IO (Array U sh e)
-readArr path shape = withFile path ReadMode $ \h -> do
-  header <- BS.hGet h 8
-  let (Right (enc, nElems), _) = runGet (liftM2 (,) getWord32be getWord32be) header
-  when (enc /= 2049) $ error "MNIST format error: bad magic number"
-  when (size shape /= fromIntegral nElems) $ error "MNIST reading error: size mismatch"
-  dat <- BS.hGetContents h
-  let res = computeS $ R.map fromIntegral $ fromByteString shape dat
-  return $ deepSeqArray res res
-
 readVec :: (Unbox e, Num e) => FilePath -> Int -> IO (Array U DIM1 e)
-readVec p s = readArr p (Z :. s)
-
+readVec p s = withFile p ReadMode $ \h -> do
+  header <- BS.hGet h 8
+  let (Right (magic, nElems), _) = runGet (liftM2 (,) getWord32be getWord32be) header
+  when (magic /= 2049) $ error "MNIST format error: bad magic number"
+  when (s /= fromIntegral nElems) $ error "MNIST reading error: size mismatch"
+  dat <- BS.hGetContents h
+  let res = computeS $ R.map fromIntegral $ fromByteString (Z :. s) dat
+  return $ deepSeqArray res res
+    
 readMat :: (Unbox e, Num e) => FilePath -> Int -> Int -> IO (Array U DIM2 e)
-readMat p r c = readArr p (Z :. r :. c)
+readMat p r c = withFile p ReadMode $ \h -> do
+  header <- BS.hGet h 16
+  let (Right (magic, nElems, ir, ic), _) =
+        runGet (liftM4 (,,,) getWord32be getWord32be getWord32be getWord32be) header
+  when (magic /= 2051) $ error "MNIST format error: bad magic number"
+  when (r /= fromIntegral nElems || fromIntegral c /= ir * ic) $ error "MNIST reading error: size mismatch"
+  dat <- BS.hGetContents h
+  let res = computeS $ R.map fromIntegral $ fromByteString (Z :. r :. c) dat
+  return $ deepSeqArray res res
 
 
     
