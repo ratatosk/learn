@@ -14,6 +14,8 @@ library
     base == 4.5.*,
     repa >= 3.2,
     logfloat >= 0.12,
+    binary-strict >= 0.4,
+    bytestring >= 0.9,
     repa-algorithms >= 0.3
     
   ghc-options:
@@ -32,7 +34,8 @@ library
   exposed-modules:
     Learn.NN
     Learn.Numeric
-    Learn.IO
+    Learn.IO.Text
+    Learn.IO.MNIST
     Learn.Util
     Learn.GradientDescent
     Learn.Optimization
@@ -88,7 +91,7 @@ executable matconvert
     filepath >= 1.3.0.0
   main-is: util/Convert.hs
   other-modules:
-    Learn.IO
+    Learn.IO.Text
   
 
 executable chargenerator

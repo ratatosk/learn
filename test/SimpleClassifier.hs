@@ -8,7 +8,7 @@ import Data.Array.Repa.IO.Binary
 import Data.Array.Repa.Repr.ForeignPtr
 
 import Learn.Types
-import Learn.IO
+import Learn.IO.Text
 import Learn.NN
 import Learn.Util
 import Learn.GradientDescent

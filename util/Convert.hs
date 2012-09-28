@@ -10,7 +10,7 @@ import System.Environment
 import System.Exit
 import System.FilePath.Posix
 
-import Learn.IO
+import Learn.IO.Text
 
 txt2bin :: FilePath -> FilePath -> Int -> Int -> IO ()
 txt2bin from to r c = do
