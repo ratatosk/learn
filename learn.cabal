@@ -13,6 +13,7 @@ library
   build-depends:
     base == 4.5.*,
     repa >= 3.2,
+    logfloat >= 0.12,
     repa-algorithms >= 0.3
     
   ghc-options:
@@ -54,6 +55,7 @@ executable simpleclassifier
 
   build-depends:
     base == 4.5.*,
+    logfloat >= 0.12,
     learn,
     repa >= 3.2,
     repa-io >= 3.2,

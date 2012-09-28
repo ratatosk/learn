@@ -6,6 +6,8 @@ import Prelude as P
 
 import Control.Monad (liftM)
 
+import Data.Number.LogFloat (log1p)
+
 import Data.Array.Repa                  as R
 import Data.Array.Repa.Unsafe           as R
 
@@ -133,10 +135,13 @@ sqDistPenalty a y = let d = a - y in d * d
 
 {-# INLINE logPenalty #-}
 logPenalty :: Double -> Double -> Double
-logPenalty a y = - y * log a - (1 - y) * log (1 - a)
+logPenalty a y = - y * log a - (1 - y) * log1p (-a)
 
 hypothesis :: Monad m => NN -> UMat -> m UMat
 hypothesis nn x = liftM (last . snd) $ forwardP nn x
+
+isBad :: Double -> Bool
+isBad x = isNaN x || isInfinite x
 
 -- ^ computes logPenalty based cost function
 cost :: Monad m => NN -> UMat -> UMat -> m Double
@@ -153,7 +158,9 @@ costNGradient nn x y = do
   c <- liftM (/ fromIntegral m) $ sumAllP $ R.zipWith logPenalty (last a) y
   e <- errorsP y nn z a
   grad <- gradientP e (x:a)
-  return (c, grad)
+  if isBad c
+    then error "NaN"
+    else return (c, grad)
 
 -- omg...
 mapPair :: (Shape sh1, Shape sh2) => (forall sh' . Shape sh' => Array U sh' Double -> Array U sh' Double -> Array U sh' Double) -> (Array U sh1 Double, Array U sh2 Double) -> (Array U sh1 Double, Array U sh2 Double) -> (Array U sh1 Double, Array U sh2 Double)
