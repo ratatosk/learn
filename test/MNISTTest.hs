@@ -1,8 +1,9 @@
 module Main where
 
+import Control.Monad
 import Control.Applicative
 
-import Data.Array.Repa as R
+import Data.Array.Repa as R hiding ((++))
 
 import Learn.IO.MNIST
 import Learn.NN
@@ -28,20 +29,25 @@ import System.Environment
   program assumes that training set contains 60,000 images and test set contains 10,000. (hardcoded below)
 -}
 
-trainSize, testSize :: Int
-trainSize = 60000
-testSize = 10000
+-- FIXME: cost calculates to NaN on the first step if we use 1000 hidden units. Investigation needed.
 
 main :: IO ()
 main = do
   [trainI, trainL, testI, testL, itersS] <- getArgs
+
   let iters = read itersS
 
-  xTrain <- readMat trainI trainSize 784 :: IO (Array U DIM2 Double)
-  yTrain <- (classesToPredictions 10 <$> readVec trainL trainSize) :: IO (Array U DIM2 Double)
+  xTrain <- computeS . R.map fromIntegral <$> readLinearImages trainI
+  yTrain <- classesToPredictions 10 <$> readLabels trainL
+  let (Z :. trainImgNum :. imgSize) = extent xTrain
+      (Z :. trainLabelNum :. _) = extent yTrain 
+  when (trainLabelNum /= trainImgNum) $ error "Label/Image number mismatch in training data"
+
+  putStrLn $ "Image size (pixels): " ++ show imgSize
+  putStrLn $ "Training samples: " ++ show trainImgNum
     
-  let shape = [784, 25, 10]
-      inn = randInit 1 shape
+  let shape = [imgSize, 500, 10]
+      inn = randInit 123 shape
   putStrLn $ xTrain `deepSeqArray` yTrain `deepSeqArray` "Starting learning..."
 
   let func = ts2Function shape xTrain yTrain
@@ -50,15 +56,19 @@ main = do
       start = nn2Vector inn
 
   (nnv, c) <- conjugateGradient sc func start
-
-  let nn = vector2NN shape nnv
   
-  xTest <- readMat testI testSize 784 :: IO (Array U DIM2 Double)
-  yTest <- readVec testL testSize :: IO (Array U DIM1 Int)
+  let nn = vector2NN shape nnv
 
+  xTest <- computeS . R.map fromIntegral <$> readLinearImages testI
+  yTestLabels <- readLabels testL
+  let (Z :. testImgNum :. testImgSize) = extent xTest
+      (Z :. testLabelNum) = extent yTestLabels
+  when (testLabelNum /= testImgNum) $ error "Label/Image number mismatch in testing data"
+  when (testImgSize /= imgSize) $ error "Train/Test image size mismatch"
+  
   ans <- predictionsToClasses <$> hypothesis nn xTest
 
-  let correct = length $ filter id $ Prelude.zipWith (==) (toList yTest) (toList ans)
+  let correct = length $ filter id $ Prelude.zipWith (==) (toList yTestLabels) (toList ans)
       
   print c
   print correct

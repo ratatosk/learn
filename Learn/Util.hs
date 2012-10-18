@@ -3,11 +3,12 @@
 module Learn.Util where
 
 import Data.Array.Repa as R
+import Data.Array.Repa.Repr.Unboxed as R
 
-classesToPredictions :: (Source r Int) => Int -> Array r DIM1 Int -> Array U DIM2 Double
+classesToPredictions :: (Integral e, Source r e) => Int -> Array r DIM1 e -> Array U DIM2 Double
 classesToPredictions nClasses c = computeS 
                                   $ fromFunction sh 
-                                  $ \(Z :. row :. col) -> if col == c ! (Z :. row) then 1.0 else 0.0
+                                  $ \(Z :. row :. col) -> if col == fromIntegral (c ! (Z :. row)) then 1.0 else 0.0
   where
     (Z :. m) = extent c
     sh = (Z :. m :. nClasses)
@@ -21,9 +22,15 @@ maxIdx a = maxIdx' 0 0
                                   then maxIdx' ptr (ptr + 1)
                                   else maxIdx' cur (ptr + 1)
            
-predictionsToClasses :: (Source r Double) => Array r DIM2 Double -> Array U DIM1 Int
+predictionsToClasses :: (Integral e, Unbox e, Source r e, Source r Double) => Array r DIM2 Double -> Array U DIM1 e
 predictionsToClasses c = computeS 
                          $ fromFunction (Z :. r) 
-                         $ \(Z :. i) -> maxIdx $ slice c (Any :. i :. All)
+                         $ \(Z :. i) -> fromIntegral $ maxIdx $ slice c (Any :. i :. All)
   where
     (Z :. r :. _) = extent c
+
+mapFst :: (a -> b) -> (a, c) -> (b, c)
+mapFst f (a, b) = (f a, b)
+
+mapSnd :: (a -> b) -> (c, a) -> (c, b)
+mapSnd f (a, b) = (a, f b)

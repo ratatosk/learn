@@ -15,6 +15,7 @@ import Data.Array.Repa.Algorithms.Matrix
 import Data.Array.Repa.Algorithms.Randomish
 
 import Learn.Types
+import Learn.MonadLogger
 import Learn.Optimization
 
 -- Number of neurons in every layer
@@ -67,7 +68,7 @@ sigmoid' x = sx * (1 - sx) where sx = sigmoid x
 -- TODO: try to remove NOINLINE annotations
 -- calculate weighted sums in parallel
 {-# NOINLINE weightedSumsP #-}
-weightedSumsP :: Monad m => UMat -> Layer -> m UMat
+weightedSumsP :: MonadLogger m => UMat -> Layer -> m UMat
 weightedSumsP i (w, b)
   = [i, w] `deepSeqArrays` b `deepSeqArray`
     do let (Z :. h1  :. _) = extent i -- n
@@ -83,7 +84,7 @@ weightedSumsP i (w, b)
 -- TODO: use R.*^
 -- A .* sigmoid'(B) (.* - elementWise multiplication)
 {-# NOINLINE dotProdSigmP #-}       
-dotProdSigmP :: Monad m => UMat -> UMat -> m UMat
+dotProdSigmP :: MonadLogger m => UMat -> UMat -> m UMat
 dotProdSigmP a b = [a, b] `deepSeqArrays` computeP
                   $ fromFunction (extent a)
                   $ \ix -> a ! ix * sigmoid' (b ! ix)
@@ -93,7 +94,7 @@ outError :: Double -> Double -> Double -> Double
 outError z a y = - (y - a) * sigmoid' z
                                  
 -- returns lists of weighted sums and activations
-forwardP :: Monad m => NN -> UMat -> m ([UMat], [UMat])
+forwardP :: MonadLogger m => NN -> UMat -> m ([UMat], [UMat])
 forwardP nn inp = liftM unzip $ forwardP' nn inp
   where
     forwardP' [] _ = return []
@@ -103,7 +104,7 @@ forwardP nn inp = liftM unzip $ forwardP' nn inp
       nxt <- forwardP' ls a
       return $ (z, a) : nxt
          
-errorsP :: Monad m => UMat -> NN -> [UMat] -> [UMat] -> m [UMat]
+errorsP :: MonadLogger m => UMat -> NN -> [UMat] -> [UMat] -> m [UMat]
 errorsP y0 n0 z0 a0 = liftM reverse $ errors1 (reverse $ tail n0) (tail $ reverse z0) (last a0)
   where
     errors1 n' z' a' = do
@@ -119,7 +120,7 @@ errorsP y0 n0 z0 a0 = liftM reverse $ errors1 (reverse $ tail n0) (tail $ revers
     errorsHid _ _ _ = return []
       
 -- ^ warning, (a:as) should contain input values as its head.
-gradientP :: Monad m => [UMat] -> [UMat] -> m NN
+gradientP :: MonadLogger m => [UMat] -> [UMat] -> m NN
 gradientP (e:es) (a:as) = let m = (row $ extent e) in do
   enorm <- computeP $ R.map (/ fromIntegral m) e
   et <- transpose2P enorm
@@ -137,25 +138,26 @@ sqDistPenalty a y = let d = a - y in d * d
 logPenalty :: Double -> Double -> Double
 logPenalty a y = - y * log a - (1 - y) * log1p (-a)
 
-hypothesis :: Monad m => NN -> UMat -> m UMat
+hypothesis :: MonadLogger m => NN -> UMat -> m UMat
 hypothesis nn x = liftM (last . snd) $ forwardP nn x
 
 isBad :: Double -> Bool
 isBad x = isNaN x || isInfinite x
 
 -- ^ computes logPenalty based cost function
-cost :: Monad m => NN -> UMat -> UMat -> m Double
+cost :: MonadLogger m => NN -> UMat -> UMat -> m Double
 cost nn x y = do
   let m = row $ extent y
   (_, a) <- forwardP nn x
   liftM (/ fromIntegral m) $ sumAllP $ R.zipWith logPenalty (last a) y
 
 -- ^ computes const and gradient using logPenalty cost function
-costNGradient :: Monad m => NN -> UMat -> UMat -> m (Double, NN)
+costNGradient :: MonadLogger m => NN -> UMat -> UMat -> m (Double, NN)
 costNGradient nn x y = do
   let m = row $ extent y
   (z, a) <- forwardP nn x
   c <- liftM (/ fromIntegral m) $ sumAllP $ R.zipWith logPenalty (last a) y
+  yell $ show c
   e <- errorsP y nn z a
   grad <- gradientP e (x:a)
   if isBad c
@@ -196,7 +198,7 @@ vector2NN sh v =
   in P.map (\(s, i, o) -> vec2Layer i o s v) $ zip3 starts (init sh) (tail sh)
 
 -- ^ convert training set to optimization target
-ts2Function :: Monad m => NNShape -> UMat -> UMat -> Function m
+ts2Function :: MonadLogger m => NNShape -> UMat -> UMat -> Function m
 ts2Function sh x y nnVec = do
   (c, nnGrad) <- costNGradient (vector2NN sh nnVec) x y
   return (c, nn2Vector nnGrad)

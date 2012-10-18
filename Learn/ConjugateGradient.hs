@@ -7,6 +7,7 @@ import Control.Monad
 import Data.Maybe
 import Data.Array.Repa as R hiding ((++))
 
+import Learn.MonadLogger
 import Learn.Types
 import Learn.Optimization
 
@@ -22,7 +23,7 @@ chose low high = low + (high - low) / 100
 
 -- ^ maximum step length, TODO: tune it
 aMax :: Double
-aMax = 1000.0
+aMax = 50.0
 
 -- ^ constants for strong Wolfe conditions recommended by Nocedal:
 c₁ :: Double
@@ -79,11 +80,12 @@ hasNaNs = isNaN . sumAllS
 
 -- ^ line search algorithm form the book:
 -- Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, Algorithm 3.5
-lineSearch :: Monad m => Function m -> UVec -> Double -> UVec -> UVec -> m (UVec, Double, UVec)
+lineSearch :: MonadLogger m => Function m -> UVec -> Double -> UVec -> UVec -> m (UVec, Double, UVec)
 lineSearch fn x₀ f₀ δf₀ dir =
   do
     let f₀' = sumAllS $ δf₀ *^ dir
         step a₁ a₂ f₁ f₁' first = do
+          yell $ "line search step with a1 = " ++ show a₁ ++ "; a2 = " ++ show a₂
           (x₂, f₂, f₂', δf₂) <-  φ a₂
           case () of
             _ | f₂ > f₀ + c₁ * a₂ * f₀' || (f₂ > f₁ && not first) -> zoom a₁ a₂ f₁ f₂ f₁' f₂'
@@ -92,6 +94,7 @@ lineSearch fn x₀ f₀ δf₀ dir =
               | otherwise -> step a₂ (chose a₂ aMax) f₂ f₂' True
 
         zoom aLow aHigh fLow fHigh fLow' fHigh' = do
+          yell $ "line search zoom with al = " ++ show aLow ++ "; ah = " ++ show aHigh
           let aⱼ = if aLow < aHigh
                    then cubicOrBisect aLow aHigh fLow fHigh fLow' fHigh'
                    else cubicOrBisect aHigh aLow fHigh fLow fHigh' fLow'
@@ -102,8 +105,9 @@ lineSearch fn x₀ f₀ δf₀ dir =
               | fⱼ' * (aHigh - aLow) >= 0 -> zoom aLow aⱼ fLow fⱼ fLow' fⱼ' -- move upper bound
               | otherwise -> zoom aⱼ aHigh fⱼ fHigh fⱼ' fHigh' -- move lower bound
 
-    (x, f, δf) <- step 0 (chose 0 aMax) f₀  f₀' False
-    return (x, f, δf)
+    yell $ "initial gradient: " ++ show f₀'
+    step 0 (chose 0 aMax) f₀  f₀' False
+    
 
 
   where
@@ -114,7 +118,7 @@ lineSearch fn x₀ f₀ δf₀ dir =
       return (x, p, p', δp)
 
 -- Polack-Ribiere conjugate gradient method with restarts
-conjugateGradient :: Monad m => StopCondition -> Function m -> UVec -> m (UVec, Double)
+conjugateGradient :: MonadLogger m => StopCondition -> Function m -> UVec -> m (UVec, Double)
 conjugateGradient sc fn x₀ =
   do
     (f₀, δf₀) <- fn x₀  -- get value and gradient at start
@@ -125,6 +129,7 @@ conjugateGradient sc fn x₀ =
     (Z :. n) = extent x₀
 
     loop x_ f_ δf_ p_ i ir = do
+      yell $ "conjugate gradient starting iteration " ++ show i
       (x, f, δf) <- lineSearch fn x_ f_ δf_ p_
       let beta = betaPR δf_ δf
           (betaPlus, restart) = if beta > 0 && ir < n -- if beta went below zero or at least every n'th iteration

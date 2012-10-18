@@ -4,21 +4,22 @@ module Learn.GradientDescent where
 
 import Data.Array.Repa as R
 
+import Learn.MonadLogger
 import Learn.Types
 import Learn.NN
 import Learn.Optimization
 
-step :: Monad m => NN -> UMat -> UMat -> Double -> m (NN, Double)
+step :: MonadLogger m => NN -> UMat -> UMat -> Double -> m (NN, Double)
 step nn x y a = do
   (c, g) <- costNGradient nn x y
   return (nnSumS nn g (negate a), c)
 
-runGradientDescent :: Monad m => NN -> UMat -> UMat -> Double -> Int -> m (NN, Double)
+runGradientDescent :: MonadLogger m => NN -> UMat -> UMat -> Double -> Int -> m (NN, Double)
 runGradientDescent nn x y alpha iter = do
   r@(nn', _) <- step nn x y alpha
   if iter < 2 then return r else runGradientDescent nn' x y alpha (iter - 1)
 
-gradientDescent :: Monad m => StopCondition -> Double -> Function m -> UVec -> m (UVec, Double)
+gradientDescent :: MonadLogger m => StopCondition -> Double -> Function m -> UVec -> m (UVec, Double)
 gradientDescent sc alpha fn start =
   do
     (f₀, f₀') <- fn start
